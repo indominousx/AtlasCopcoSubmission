@@ -3,8 +3,8 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 import TotalIssuesSummary from './TotalIssuesSummary';
-import CurrentIssuesChart from './CurrentIssuesChart';
 import MetricCardsGrid from './MetricCardsGrid';
+import LastUploadedChart from './LastUploadedChart';
 
 // Define a type for the data returned by our Supabase function for type safety
 type IssueTypeSummary = {
@@ -30,6 +30,14 @@ const Dashboard: React.FC = () => {
         .from('issues')
         .select('issue_type, part_number')
         .order('issue_type');
+
+      // Also fetch the latest report to get the filename
+      const { data: latestReport, error: reportError } = await supabase
+        .from('reports')
+        .select('file_name, uploaded_at')
+        .order('uploaded_at', { ascending: false })
+        .limit(1)
+        .single();
 
       if (error) {
         // If table doesn't exist or no data, show helpful message
@@ -66,6 +74,8 @@ const Dashboard: React.FC = () => {
             borderColor: 'rgba(75, 192, 192, 1)',
             borderWidth: 1,
           }],
+          // Include filename from latest report if available
+          fileName: !reportError && latestReport ? latestReport.file_name : null,
         });
       } else {
         // No data in database
@@ -188,6 +198,7 @@ const Dashboard: React.FC = () => {
 
       // Create chart data (works regardless of Supabase success/failure)
       setChartData({
+        fileName: file.name,
         labels: sheetNames,
         datasets: [
           {
@@ -321,11 +332,28 @@ const Dashboard: React.FC = () => {
       {/* Metric Cards Grid */}
       <MetricCardsGrid totalSummary={totalSummary} />
 
-      {/* Total Issues Summary Component */}
-      <TotalIssuesSummary totalSummary={totalSummary} />
+      {/* Charts Section - Two Column Layout */}
+      <div style={{ 
+        maxWidth: '1400px', 
+        margin: '0 auto', 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 1fr', 
+        gap: '50px',
+        padding: '0 20px'
+      }}>
+        {/* Left Column - Issue Distribution (Total Issues Summary) */}
+        <div style={{ minWidth: '0', height: '550px' }}>
+          <TotalIssuesSummary totalSummary={totalSummary} />
+        </div>
 
-      {/* Current Issues Chart Component */}
-      <CurrentIssuesChart chartData={chartData} isLoading={isLoading} />
+        {/* Right Column - Issue Proportion (Last Uploaded Chart) */}
+        <div style={{ minWidth: '0', height: '550px' }}>
+          <LastUploadedChart 
+            chartData={chartData} 
+            isLoading={isLoading} 
+          />
+        </div>
+      </div>
     </div>
   );
 };

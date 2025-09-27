@@ -17,38 +17,45 @@ const MetricCard: React.FC<MetricCardProps> = ({
   color, 
   backgroundColor 
 }) => {
+  // Debug logging
+  console.log(`MetricCard ${title}: value = ${value}, type = ${typeof value}`);
+  
   return (
     <div style={{
       backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: '24px',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #f0f0f0',
-      minHeight: '140px',
+      borderRadius: '8px',
+      padding: '20px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      border: '1px solid #e5e7eb',
+      minWidth: '150px',
+      minHeight: '120px',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-between'
+      justifyContent: 'space-between',
+      flex: '1'
     }}>
       {/* Header with icon and title */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '12px' }}>
         <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
+          width: '36px',
+          height: '36px',
+          borderRadius: '8px',
           backgroundColor: backgroundColor,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: '12px',
-          fontSize: '18px'
+          fontSize: '16px',
+          flexShrink: 0
         }}>
           {icon}
         </div>
         <div style={{
-          fontSize: '16px',
+          fontSize: '14px',
           fontWeight: '500',
           color: '#6b7280',
-          lineHeight: '1.2'
+          lineHeight: '1.3',
+          flex: 1
         }}>
           {title}
         </div>
@@ -56,20 +63,22 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Value */}
       <div style={{
-        fontSize: '32px',
+        fontSize: '36px',
         fontWeight: '700',
-        color: '#1f2937',
+        color: '#111827',
         marginBottom: '8px',
-        lineHeight: '1'
+        lineHeight: '1',
+        textAlign: 'left',
+        display: 'block'
       }}>
-        {value.toLocaleString()}
+        {value}
       </div>
 
       {/* Description */}
       <div style={{
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#9ca3af',
-        lineHeight: '1.4'
+        lineHeight: '1.3'
       }}>
         {description}
       </div>

@@ -25,31 +25,38 @@ const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary })
 
   return (
     <div style={{ 
-      maxWidth: '800px', 
-      margin: '0 auto 40px auto', 
+      width: '100%', 
+      height: '100%',
       padding: '20px', 
-      backgroundColor: '#f8f9fa', 
-      borderRadius: '8px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      backgroundColor: '#ffffff', 
+      borderRadius: '12px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      border: '1px solid #e5e7eb',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#333' }}>
-        Total Issues by Category (All Time)
-      </h2>
-      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-        <span style={{ 
-          fontSize: '1.2em', 
-          fontWeight: 'bold', 
-          color: '#2c3e50' 
-        }}>
-          Grand Total: {grandTotal.toLocaleString()} unique issues
-        </span>
-      </div>
-      <Bar 
-        data={{
-          labels: Object.keys(totalSummary),
-          datasets: [{
-            label: 'Total Unique Issues (All Time)',
-            data: Object.values(totalSummary),
+      <h3 style={{ 
+        margin: '0 0 8px 0', 
+        color: '#1f2937',
+        fontSize: '18px',
+        fontWeight: '600'
+      }}>
+        Issue Distribution
+      </h3>
+      <p style={{ 
+        margin: '0 0 20px 0', 
+        color: '#6b7280',
+        fontSize: '14px'
+      }}>
+        Breakdown of new part number issues by category.
+      </p>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <Bar 
+          data={{
+            labels: Object.keys(totalSummary),
+            datasets: [{
+              label: 'Total Unique Issues (All Time)',
+              data: Object.values(totalSummary),
             backgroundColor: [
               'rgba(255, 99, 132, 0.8)',
               'rgba(54, 162, 235, 0.8)',
@@ -72,46 +79,50 @@ const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary })
             ],
             borderWidth: 2,
           }],
-        }}
-        options={{
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'top' as const,
-            },
-            title: {
-              display: false,
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} issues`;
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Number of Unique Issues'
+          }}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top' as const,
               },
-              ticks: {
-                callback: function(value) {
-                  return typeof value === 'number' ? value.toLocaleString() : value;
+              title: {
+                display: false,
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} issues`;
+                  }
                 }
               }
             },
-            x: {
-              title: {
-                display: true,
-                text: 'Issue Categories'
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Number of Unique Issues'
+                },
+                ticks: {
+                  stepSize: 1,
+                  precision: 0,
+                  callback: function(value) {
+                    return typeof value === 'number' && Number.isInteger(value) ? value.toLocaleString() : '';
+                  }
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Issue Categories'
+                }
               }
             }
-          }
-        }}
-      />
+          }}
+        />
+      </div>
     </div>
   );
 };

@@ -6,116 +6,97 @@ interface MetricCardsGridProps {
 }
 
 const MetricCardsGrid: React.FC<MetricCardsGridProps> = ({ totalSummary }) => {
-  if (Object.keys(totalSummary).length === 0) {
-    return null;
-  }
-
   // Calculate total parts analyzed
   const totalParts = Object.values(totalSummary).reduce((sum, count) => sum + count, 0);
 
-  // Define card configurations for different issue types
-  const getCardConfig = (category: string, count: number) => {
-    const configs: { [key: string]: any } = {
-      'Missing Extensions': {
-        icon: '⚠️',
-        color: '#ef4444',
-        backgroundColor: '#fef2f2',
-        description: 'New issues in period'
+  // Get all issue categories from totalSummary
+  const issueCategories = Object.keys(totalSummary);
+  
+  // Define icons and colors for different issue types
+  const getIssueCardConfig = (issueType: string) => {
+    const configs: { [key: string]: { icon: string; backgroundColor: string; description: string } } = {
+      'ToolBox Parts': { 
+        icon: "⚠️", 
+        backgroundColor: "#fee2e2", 
+        description: "Parts missing file extensions" 
       },
-      'Surface Bodies': {
-        icon: '⚠️',
-        color: '#f59e0b',
-        backgroundColor: '#fffbeb',
-        description: 'New issues in period'
+      'Surface Parts': { 
+        icon: "🔍", 
+        backgroundColor: "#fef3c7", 
+        description: "Parts with surface body issues" 
       },
-      'Incorrect Naming': {
-        icon: '</>', 
-        color: '#8b5cf6',
-        backgroundColor: '#f3f4f6',
-        description: 'Parts with non-English characters'
+      'Missing Extensions': { 
+        icon: "</>" , 
+        backgroundColor: "#ede9fe", 
+        description: "Parts with naming issues" 
       },
-      'Corrected Parts': {
-        icon: '✓',
-        color: '#10b981',
-        backgroundColor: '#f0fdf4',
-        description: 'Issues resolved in period'
+      'Non English Characters': { 
+        icon: "✓", 
+        backgroundColor: "#dcfce7", 
+        description: "Issues resolved in period" 
       },
-      'Parts with Issues': {
-        icon: '⚠️',
-        color: '#f59e0b',
-        backgroundColor: '#fffbeb',
-        description: 'Unique parts with one or more issues'
+      'Part Number Validation': { 
+        icon: "✓", 
+        backgroundColor: "#dcfce7", 
+        description: "Issues resolved in period" 
       },
-      'default': {
-        icon: '📊',
-        color: '#6b7280',
-        backgroundColor: '#f9fafb',
-        description: 'Issues found in category'
+      'Default': { 
+        icon: "📋", 
+        backgroundColor: "#f3f4f6", 
+        description: "Issue count for category" 
       }
     };
-
-    return configs[category] || configs['default'];
+    
+    return configs[issueType] || configs['Default'];
   };
+
+  // Create metrics array starting with total card
+  const metrics = [
+    {
+      title: "Total Issues",
+      value: totalParts,
+      description: "Total issues across all categories",
+      icon: "📊",
+      backgroundColor: "#dbeafe"
+    }
+  ];
+
+  // Add cards for each issue category (limit to 5 as requested)
+  const limitedCategories = issueCategories.slice(0, 5);
+  limitedCategories.forEach(category => {
+    const config = getIssueCardConfig(category);
+    metrics.push({
+      title: category,
+      value: totalSummary[category] || 0,
+      description: config.description,
+      icon: config.icon,
+      backgroundColor: config.backgroundColor
+    });
+  });
 
   return (
     <div style={{ 
-      maxWidth: '1200px', 
-      margin: '0 auto 40px auto', 
-      padding: '20px'
+      maxWidth: '1400px', 
+      margin: '0 auto 30px auto', 
+      padding: '0 20px'
     }}>
-      <h2 style={{ 
-        textAlign: 'center', 
-        marginBottom: '30px', 
-        color: '#1f2937',
-        fontSize: '24px',
-        fontWeight: '600'
-      }}>
-        Issue Analysis Summary
-      </h2>
-      
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '20px',
-        marginBottom: '20px'
+        display: 'flex',
+        gap: '16px',
+        overflowX: 'auto',
+        paddingBottom: '10px'
       }}>
-        {/* Total Parts Card */}
-        <MetricCard
-          title="Total Issues"
-          value={totalParts}
-          description="Total issues analyzed across all categories"
-          icon="📊"
-          color="#3b82f6"
-          backgroundColor="#eff6ff"
-        />
-
-        {/* Individual Category Cards */}
-        {Object.entries(totalSummary).map(([category, count]) => {
-          const config = getCardConfig(category, count);
-          return (
-            <MetricCard
-              key={category}
-              title={category}
-              value={count}
-              description={config.description}
-              icon={config.icon}
-              color={config.color}
-              backgroundColor={config.backgroundColor}
-            />
-          );
-        })}
-
-        {/* Summary Card - Parts with Issues (if we have multiple categories) */}
-        {Object.keys(totalSummary).length > 1 && (
+        {metrics.map((metric, index) => (
           <MetricCard
-            title="Issue Categories"
-            value={Object.keys(totalSummary).length}
-            description="Different types of issues identified"
-            icon="📂"
-            color="#8b5cf6"
-            backgroundColor="#f5f3ff"
+            key={metric.title}
+            title={metric.title}
+            value={metric.value}
+            description={metric.description}
+            icon={metric.icon}
+            color="#374151"
+            backgroundColor={metric.backgroundColor}
           />
-        )}
+        ))}
       </div>
     </div>
   );
