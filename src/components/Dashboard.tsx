@@ -1,0 +1,333 @@
+import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
+import { supabase } from '../supabaseClient';
+import { v4 as uuidv4 } from 'uuid';
+import TotalIssuesSummary from './TotalIssuesSummary';
+import CurrentIssuesChart from './CurrentIssuesChart';
+import MetricCardsGrid from './MetricCardsGrid';
+
+// Define a type for the data returned by our Supabase function for type safety
+type IssueTypeSummary = {
+  issue_type: string;
+  error_count: number;
+};
+
+const Dashboard: React.FC = () => {
+  const [chartData, setChartData] = useState<any>(null);
+  const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [totalSummary, setTotalSummary] = useState<{[key: string]: number}>({});
+
+  // This function fetches the aggregated data from the DB and populates the chart
+  const fetchChartData = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      // Query issues table directly and group by issue_type
+      const { data, error } = await supabase
+        .from('issues')
+        .select('issue_type, part_number')
+        .order('issue_type');
+
+      if (error) {
+        // If table doesn't exist or no data, show helpful message
+        setError('No data available. Please upload an Excel file to view charts.');
+        console.warn('Supabase query failed:', error.message);
+      } else if (data && data.length > 0) {
+        // Group data by issue_type and count unique part numbers
+        const issueGroups: { [key: string]: Set<string> } = {};
+        
+        data.forEach((item: any) => {
+          if (!issueGroups[item.issue_type]) {
+            issueGroups[item.issue_type] = new Set();
+          }
+          issueGroups[item.issue_type].add(item.part_number);
+        });
+
+        // Convert to chart format
+        const labels = Object.keys(issueGroups);
+        const counts = labels.map(label => issueGroups[label].size);
+
+        // Create total summary object
+        const summary: {[key: string]: number} = {};
+        labels.forEach((label, index) => {
+          summary[label] = counts[index];
+        });
+        setTotalSummary(summary);
+
+        setChartData({
+          labels: labels,
+          datasets: [{
+            label: 'Total Unique Issues Recorded',
+            data: counts,
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+          }],
+        });
+      } else {
+        // No data in database
+        setError('No data available. Please upload an Excel file to view charts.');
+      }
+    } catch (err) {
+      setError('Database connection failed. Please upload an Excel file to view data.');
+      console.warn('Supabase error:', err);
+    }
+    setIsLoading(false);
+  };
+
+  // Fetch initial data when the component loads
+  useEffect(() => {
+    fetchChartData();
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError('');
+    setIsUploading(true);
+    const reportId = uuidv4();
+
+    try {
+      // Parse the Excel file locally
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetNames = workbook.SheetNames;
+      
+      if (sheetNames.length === 0) {
+        throw new Error('The uploaded Excel file has no sheets.');
+      }
+
+      let allPartsToProcess: any[] = [];
+      let totalPartsAnalyzed = 0;
+
+      // Process each sheet and collect data for Supabase
+      const issueCounts = sheetNames.map(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        // Deduplication logic based on Part Number and Owner
+        const seen = new Set<string>();
+        const uniqueIssues = jsonData.filter(row => {
+          // Check if the required columns exist in the row
+          if (row['Part Number'] === undefined || row['Part Number'] === '') {
+            return false;
+          }
+
+          // Use the Part Number as the base for the unique key
+          const partNumber = String(row['Part Number']);
+          
+          // Check if an Owner exists and has a value for this row
+          const owner = row['Owner'] ? String(row['Owner']) : '';
+          
+          // Create a unique key
+          const key = owner ? `${partNumber}|${owner}` : partNumber;
+
+          // If the key has been seen before, it's a duplicate
+          if (seen.has(key)) {
+            return false;
+          } else {
+            // If the key is new, add it to our set and keep the row
+            seen.add(key);
+            return true;
+          }
+        });
+
+        // Prepare data for Supabase insertion
+        const partsForDb = uniqueIssues
+          .filter(issue => issue['Part Number'])
+          .map(issue => ({
+            part_number: String(issue['Part Number']),
+            owner: issue['Owner'] ? String(issue['Owner']) : null,
+            issue_type: sheetName,
+            report_id: reportId,
+            created_at: new Date().toISOString()
+          }));
+        
+        allPartsToProcess.push(...partsForDb);
+        totalPartsAnalyzed += uniqueIssues.length;
+
+        return uniqueIssues.length;
+      });
+
+      // Save to Supabase tables (assuming you have a 'reports' and 'issues' table)
+      try {
+        // 1. Insert report summary
+        const { error: reportError } = await supabase
+          .from('reports')
+          .insert([
+            {
+              id: reportId,
+              file_name: file.name,
+              total_issues: totalPartsAnalyzed,
+              uploaded_at: new Date().toISOString()
+            }
+          ]);
+
+        if (reportError) {
+          console.warn('Failed to save report summary:', reportError.message);
+        }
+
+        // 2. Insert individual issues
+        if (allPartsToProcess.length > 0) {
+          const { error: issuesError } = await supabase
+            .from('issues')
+            .insert(allPartsToProcess);
+
+          if (issuesError) {
+            console.warn('Failed to save issues:', issuesError.message);
+          }
+        }
+
+      } catch (supabaseError) {
+        console.warn('Supabase operation failed, continuing with local processing:', supabaseError);
+      }
+
+      // Create chart data (works regardless of Supabase success/failure)
+      setChartData({
+        labels: sheetNames,
+        datasets: [
+          {
+            label: 'Number of Unique Issues',
+            data: issueCounts,
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+          },
+        ],
+      });
+
+      // Try to refresh chart data from Supabase
+      try {
+        await fetchChartData();
+      } catch (fetchError) {
+        // If fetching from Supabase fails, we already have local chart data
+        console.warn('Failed to fetch updated data from Supabase:', fetchError);
+      }
+
+    } catch (e: any) {
+      setError(`There was an error processing the Excel file: ${e.message}`);
+      console.error(e);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <header style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <h1>Issue Dashboard</h1>
+      </header>
+
+      <div style={{ 
+        maxWidth: '600px', 
+        margin: '0 auto 40px auto', 
+        position: 'relative'
+      }}>
+        <label 
+          htmlFor="file-upload" 
+          style={{ 
+            display: 'block',
+            padding: '60px 40px',
+            border: '2px dashed #4A90E2',
+            borderRadius: '12px',
+            backgroundColor: '#f8f9ff',
+            textAlign: 'center',
+            cursor: isUploading || isLoading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.3s ease',
+            opacity: isUploading || isLoading ? 0.6 : 1
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.currentTarget.style.backgroundColor = '#e6f0ff';
+            e.currentTarget.style.borderColor = '#2563eb';
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.currentTarget.style.backgroundColor = '#f8f9ff';
+            e.currentTarget.style.borderColor = '#4A90E2';
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.currentTarget.style.backgroundColor = '#f8f9ff';
+            e.currentTarget.style.borderColor = '#4A90E2';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && !isUploading && !isLoading) {
+              const fakeEvent = {
+                target: { files: files }
+              } as React.ChangeEvent<HTMLInputElement>;
+              handleFileUpload(fakeEvent);
+            }
+          }}
+        >
+          <div style={{ marginBottom: '20px' }}>
+            <svg 
+              width="48" 
+              height="48" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="#4A90E2" 
+              strokeWidth="2" 
+              style={{ marginBottom: '16px' }}
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7,10 12,15 17,10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </div>
+          
+          <div style={{ 
+            fontSize: '1.2em', 
+            fontWeight: '600', 
+            color: '#4A90E2',
+            marginBottom: '8px'
+          }}>
+            {isUploading ? 'Processing Report...' : 'Click to upload or drag and drop'}
+          </div>
+          
+          <div style={{ 
+            fontSize: '0.95em', 
+            color: '#6b7280',
+            fontWeight: '400'
+          }}>
+            XLSX or XLS files supported
+          </div>
+        </label>
+        
+        <input
+          id="file-upload" 
+          type="file" 
+          accept=".xlsx, .xls"
+          onChange={handleFileUpload}
+          style={{ 
+            position: 'absolute',
+            opacity: 0,
+            width: '100%',
+            height: '100%',
+            top: 0,
+            left: 0,
+            cursor: 'pointer'
+          }}
+          disabled={isUploading || isLoading}
+        />
+      </div>
+
+      {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
+
+      {/* Metric Cards Grid */}
+      <MetricCardsGrid totalSummary={totalSummary} />
+
+      {/* Total Issues Summary Component */}
+      <TotalIssuesSummary totalSummary={totalSummary} />
+
+      {/* Current Issues Chart Component */}
+      <CurrentIssuesChart chartData={chartData} isLoading={isLoading} />
+    </div>
+  );
+};
+
+export default Dashboard;
