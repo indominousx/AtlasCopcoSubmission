@@ -117,7 +117,9 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
   }, []);
 
   useEffect(() => {
+    console.log('CorrectedPartsChart refreshTrigger changed:', refreshTrigger);
     if (refreshTrigger > 0) {
+      console.log('CorrectedPartsChart refreshing data...');
       fetchCorrectedPartsData();
     }
   }, [refreshTrigger]);
@@ -189,9 +191,9 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        backgroundColor: 'white',
+        backgroundColor: '#ffffff',
         borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         border: '1px solid #e5e7eb'
       }}>
         <div style={{
@@ -227,9 +229,9 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        backgroundColor: 'white',
+        backgroundColor: '#ffffff',
         borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         border: '1px solid #e5e7eb'
       }}>
         <div style={{
@@ -260,9 +262,9 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        backgroundColor: 'white',
+        backgroundColor: '#ffffff',
         borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         border: '1px solid #e5e7eb'
       }}>
         <div style={{
@@ -296,90 +298,34 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
   }
 
   return (
-    <div style={{
+    <div style={{ 
+      width: '100%', 
       height: '100%',
-      backgroundColor: 'white',
+      padding: '20px', 
+      backgroundColor: '#ffffff', 
       borderRadius: '12px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
       border: '1px solid #e5e7eb',
-      padding: '24px',
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* Custom Title and Subtitle */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{
-          margin: '0 0 8px 0',
-          fontSize: '1.125rem',
-          fontWeight: '600',
-          color: '#374151',
-          lineHeight: '1.2'
-        }}>
-          Correction Status Distribution
-        </h3>
-        <p style={{
-          margin: 0,
-          fontSize: '0.875rem',
-          color: '#6b7280',
-          lineHeight: '1.4'
-        }}>
-          Distribution of parts corrected in each category
-        </p>
-      </div>
-      
-      <div style={{ flex: 1, position: 'relative', minHeight: '300px' }}>
-        <Bar data={chartData} options={chartOptions} />
-      </div>
-      
-      {/* Summary Stats */}
-      <div style={{
-        marginTop: '20px',
-        padding: '16px',
-        backgroundColor: '#f9fafb',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb'
+      <h3 style={{ 
+        margin: '0 0 8px 0', 
+        color: '#1f2937',
+        fontSize: '18px',
+        fontWeight: '600'
       }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span style={{
-            fontSize: '0.875rem',
-            fontWeight: '600',
-            color: '#374151'
-          }}>
-            Total Corrected Parts:
-          </span>
-          <span style={{
-            fontSize: '1.25rem',
-            fontWeight: '700',
-            color: '#10b981'
-          }}>
-            {chartData.datasets[0].data.reduce((sum: number, value: number) => sum + value, 0)}
-          </span>
-        </div>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '8px'
-        }}>
-          <span style={{
-            fontSize: '0.875rem',
-            fontWeight: '600',
-            color: '#374151'
-          }}>
-            Issue Categories:
-          </span>
-          <span style={{
-            fontSize: '1.125rem',
-            fontWeight: '600',
-            color: '#6b7280'
-          }}>
-            {chartData.labels.length}
-          </span>
-        </div>
+        Correction Status Distribution
+      </h3>
+      <p style={{ 
+        margin: '0 0 20px 0', 
+        color: '#6b7280',
+        fontSize: '14px'
+      }}>
+        Distribution of parts corrected in each category
+      </p>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <Bar data={chartData} options={chartOptions} />
       </div>
     </div>
   );

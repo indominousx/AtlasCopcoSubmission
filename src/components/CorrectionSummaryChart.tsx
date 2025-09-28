@@ -115,7 +115,9 @@ const CorrectionSummaryChart: React.FC<CorrectionSummaryChartProps> = ({ refresh
   }, []);
 
   useEffect(() => {
+    console.log('CorrectionSummaryChart refreshTrigger changed:', refreshTrigger);
     if (refreshTrigger > 0) {
+      console.log('CorrectionSummaryChart refreshing data...');
       fetchSummaryData();
     }
   }, [refreshTrigger]);
@@ -198,9 +200,9 @@ const CorrectionSummaryChart: React.FC<CorrectionSummaryChartProps> = ({ refresh
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        backgroundColor: 'white',
+        backgroundColor: '#ffffff',
         borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         border: '1px solid #e5e7eb'
       }}>
         <div style={{
@@ -236,9 +238,9 @@ const CorrectionSummaryChart: React.FC<CorrectionSummaryChartProps> = ({ refresh
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        backgroundColor: 'white',
+        backgroundColor: '#ffffff',
         borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         border: '1px solid #e5e7eb'
       }}>
         <div style={{
@@ -269,9 +271,9 @@ const CorrectionSummaryChart: React.FC<CorrectionSummaryChartProps> = ({ refresh
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        backgroundColor: 'white',
+        backgroundColor: '#ffffff',
         borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         border: '1px solid #e5e7eb'
       }}>
         <div style={{
@@ -310,152 +312,34 @@ const CorrectionSummaryChart: React.FC<CorrectionSummaryChartProps> = ({ refresh
   const totalParts = totalUncorrected + totalCorrected;
 
   return (
-    <div style={{
+    <div style={{ 
+      width: '100%', 
       height: '100%',
-      backgroundColor: 'white',
+      padding: '20px', 
+      backgroundColor: '#ffffff', 
       borderRadius: '12px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
       border: '1px solid #e5e7eb',
-      padding: '24px',
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* Custom Title and Subtitle */}
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{
-          margin: '0 0 8px 0',
-          fontSize: '1.125rem',
-          fontWeight: '600',
-          color: '#374151',
-          lineHeight: '1.2'
-        }}>
-          Correction Progress Overview
-        </h3>
-        <p style={{
-          margin: 0,
-          fontSize: '0.875rem',
-          color: '#6b7280',
-          lineHeight: '1.4'
-        }}>
-          Comparison of corrected vs uncorrected parts by category
-        </p>
-      </div>
-      
-      <div style={{ flex: 1, position: 'relative', minHeight: '300px' }}>
-        <Bar data={chartData} options={chartOptions} />
-      </div>
-      
-      {/* Summary Stats */}
-      <div style={{
-        marginTop: '20px',
-        padding: '16px',
-        backgroundColor: '#f9fafb',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb'
+      <h3 style={{ 
+        margin: '0 0 8px 0', 
+        color: '#1f2937',
+        fontSize: '18px',
+        fontWeight: '600'
       }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '16px',
-          textAlign: 'center'
-        }}>
-          <div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#374151',
-              marginBottom: '4px'
-            }}>
-              {totalParts}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              Total Parts
-            </div>
-          </div>
-          <div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#ef4444',
-              marginBottom: '4px'
-            }}>
-              {totalUncorrected}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              Uncorrected
-            </div>
-          </div>
-          <div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#22c55e',
-              marginBottom: '4px'
-            }}>
-              {totalCorrected}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#6b7280',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              Corrected
-            </div>
-          </div>
-        </div>
-        
-        {/* Progress bar */}
-        {totalParts > 0 && (
-          <div style={{ marginTop: '16px' }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '8px'
-            }}>
-              <span style={{
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: '#374151'
-              }}>
-                Correction Progress
-              </span>
-              <span style={{
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: '#22c55e'
-              }}>
-                {Math.round((totalCorrected / totalParts) * 100)}%
-              </span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: '#fee2e2',
-              borderRadius: '4px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${(totalCorrected / totalParts) * 100}%`,
-                height: '100%',
-                backgroundColor: '#22c55e',
-                borderRadius: '4px',
-                transition: 'width 0.5s ease'
-              }} />
-            </div>
-          </div>
-        )}
+        Correction Progress Overview
+      </h3>
+      <p style={{ 
+        margin: '0 0 20px 0', 
+        color: '#6b7280',
+        fontSize: '14px'
+      }}>
+        Comparison of corrected vs uncorrected parts by category
+      </p>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <Bar data={chartData} options={chartOptions} />
       </div>
     </div>
   );

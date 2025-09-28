@@ -8,6 +8,8 @@ import LastUploadedChart from './LastUploadedChart';
 import PartsTable from './PartsTable';
 import CorrectedPartsChart from './CorrectedPartsChart';
 import CorrectionSummaryChart from './CorrectionSummaryChart';
+import NavigationBar from './NavigationBar';
+import History from './History';
 
 // Define a type for the data returned by our Supabase function for type safety
 type IssueTypeSummary = {
@@ -21,8 +23,17 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [totalSummary, setTotalSummary] = useState<{[key: string]: number}>({});
-  const [searchTerm, setSearchTerm] = useState<string>('');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [activeNavTab, setActiveNavTab] = useState<string>('Dashboard');
+
+  // Function to trigger refresh of all charts when parts are corrected/marked incorrect
+  const triggerChartsRefresh = () => {
+    console.log('triggerChartsRefresh called');
+    setRefreshTrigger(prev => {
+      console.log('refreshTrigger updated from', prev, 'to', prev + 1);
+      return prev + 1;
+    });
+  };
 
   // This function fetches the aggregated data from the DB and populates the chart
   const fetchChartData = async () => {
@@ -237,10 +248,27 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <header style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1>Issue Dashboard</h1>
-      </header>
+    <div style={{ fontFamily: 'Arial, sans-serif' }}>
+      {/* Navigation Bar */}
+      <NavigationBar 
+        activeTab={activeNavTab}
+        onTabChange={setActiveNavTab}
+      />
+      
+      {/* Conditional Content Based on Active Tab */}
+      {activeNavTab === 'History' ? (
+        <History />
+      ) : activeNavTab === 'RealAdmin' ? (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <h2 style={{ color: '#1f2937', fontSize: '24px', fontWeight: '600', margin: '0 0 16px 0' }}>RealAdmin Panel</h2>
+          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>Admin functionality coming soon...</p>
+        </div>
+      ) : (
+        /* Main Dashboard Content */
+        <div style={{ padding: '20px' }}>
+        <header style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <h2 style={{ color: '#1f2937', fontSize: '24px', fontWeight: '600', margin: 0 }}>Issue Dashboard</h2>
+        </header>
 
       {/* Upload Section */}
       <div style={{ 
@@ -349,8 +377,8 @@ const Dashboard: React.FC = () => {
         display: 'grid', 
         gridTemplateColumns: '1fr 1fr', 
         gridTemplateRows: '1fr 1fr',
-        gap: '30px',
-        padding: '0 20px'
+        gap: '50px',
+        padding: '40px'
       }}>
         {/* Top Left - Issue Distribution (Total Issues Summary) */}
         <div style={{ minWidth: '0', height: '400px' }}>
@@ -382,58 +410,13 @@ const Dashboard: React.FC = () => {
         margin: '0 auto',
         padding: '0 20px'
       }}>
-        {/* Search Bar */}
-        <div style={{ 
-          marginBottom: '20px',
-          display: 'flex',
-          justifyContent: 'flex-end'
-        }}>
-          <div style={{ position: 'relative', width: '300px' }}>
-            <input
-              type="text"
-              placeholder="Search parts (use / to activate)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 16px 8px 40px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                outline: 'none',
-                transition: 'border-color 0.2s ease',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#4A90E2';
-                e.target.style.boxShadow = '0 0 0 3px rgba(74, 144, 226, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#d1d5db';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-            <svg
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '16px',
-                height: '16px',
-                color: '#9ca3af'
-              }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
+
 
         {/* Parts Table */}
-        <PartsTable searchTerm={searchTerm} refreshTrigger={refreshTrigger} />
-      </div>
+        <PartsTable refreshTrigger={refreshTrigger} onRefreshCharts={triggerChartsRefresh} />
+        </div>
+        </div>
+      )}
     </div>
   );
 };

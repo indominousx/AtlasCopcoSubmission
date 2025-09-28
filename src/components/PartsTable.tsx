@@ -24,11 +24,11 @@ interface Issue {
 }
 
 interface PartsTableProps {
-  searchTerm?: string;
   refreshTrigger?: number;
+  onRefreshCharts?: () => void;
 }
 
-const PartsTable: React.FC<PartsTableProps> = ({ searchTerm = '', refreshTrigger = 0 }) => {
+const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCharts }) => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [correctedParts, setCorrectedParts] = useState<Issue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +39,7 @@ const PartsTable: React.FC<PartsTableProps> = ({ searchTerm = '', refreshTrigger
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'issues' | 'corrected'>('issues');
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const itemsPerPage = 10;
 
   const fetchIssues = async (page: number, search: string = '') => {
@@ -196,6 +197,11 @@ const PartsTable: React.FC<PartsTableProps> = ({ searchTerm = '', refreshTrigger
       // Refresh both tables
       fetchIssues(currentPage, searchTerm);
       fetchCorrectedParts(correctedCurrentPage, searchTerm);
+      
+      // Trigger charts refresh
+      if (onRefreshCharts) {
+        onRefreshCharts();
+      }
     } catch (error) {
       console.error('Error marking as corrected:', error);
     } finally {
@@ -222,6 +228,11 @@ const PartsTable: React.FC<PartsTableProps> = ({ searchTerm = '', refreshTrigger
       // Refresh both tables
       fetchIssues(currentPage, searchTerm);
       fetchCorrectedParts(correctedCurrentPage, searchTerm);
+      
+      // Trigger charts refresh
+      if (onRefreshCharts) {
+        onRefreshCharts();
+      }
     } catch (error) {
       console.error('Error marking as incorrect:', error);
     } finally {
@@ -293,26 +304,74 @@ const PartsTable: React.FC<PartsTableProps> = ({ searchTerm = '', refreshTrigger
       {/* Header */}
       <div style={{ 
         padding: '20px',
-        borderBottom: '1px solid #e5e7eb'
+        borderBottom: '1px solid #e5e7eb',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
       }}>
-        <h2 style={{ 
-          margin: '0 0 8px 0',
-          fontSize: '1.25rem',
-          fontWeight: '600',
-          color: '#111827'
-        }}>
-          {activeTab === 'issues' ? 'Part Number Issues' : 'Corrected Parts'}
-        </h2>
-        <p style={{ 
-          margin: 0,
-          color: '#6b7280',
-          fontSize: '0.875rem'
-        }}>
-          {activeTab === 'issues' 
-            ? `${totalCount} total issues found` 
-            : `${correctedTotalCount} corrected parts`
-          }
-        </p>
+        <div>
+          <h2 style={{ 
+            margin: '0 0 8px 0',
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            color: '#111827'
+          }}>
+            {activeTab === 'issues' ? 'Part Number Issues' : 'Corrected Parts'}
+          </h2>
+          <p style={{ 
+            margin: 0,
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {activeTab === 'issues' 
+              ? `${totalCount} total issues found` 
+              : `${correctedTotalCount} corrected parts`
+            }
+          </p>
+        </div>
+        
+        {/* Search Bar */}
+        <div style={{ position: 'relative', width: '280px' }}>
+          <input
+            type="text"
+            placeholder="Search parts (use / to activate)"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 16px 8px 40px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '0.875rem',
+              outline: 'none',
+              transition: 'border-color 0.2s ease',
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#4A90E2';
+              e.target.style.boxShadow = '0 0 0 3px rgba(74, 144, 226, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#d1d5db';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+          <svg
+            style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '16px',
+              height: '16px',
+              color: '#9ca3af'
+            }}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
       </div>
 
       {/* Table */}
