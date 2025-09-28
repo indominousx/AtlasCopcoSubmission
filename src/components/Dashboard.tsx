@@ -5,6 +5,9 @@ import { v4 as uuidv4 } from 'uuid';
 import TotalIssuesSummary from './TotalIssuesSummary';
 import MetricCardsGrid from './MetricCardsGrid';
 import LastUploadedChart from './LastUploadedChart';
+import PartsTable from './PartsTable';
+import CorrectedPartsChart from './CorrectedPartsChart';
+import CorrectionSummaryChart from './CorrectionSummaryChart';
 
 // Define a type for the data returned by our Supabase function for type safety
 type IssueTypeSummary = {
@@ -18,6 +21,8 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [totalSummary, setTotalSummary] = useState<{[key: string]: number}>({});
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   // This function fetches the aggregated data from the DB and populates the chart
   const fetchChartData = async () => {
@@ -214,9 +219,13 @@ const Dashboard: React.FC = () => {
       // Try to refresh chart data from Supabase
       try {
         await fetchChartData();
+        // Trigger PartsTable refresh by updating the refresh trigger
+        setRefreshTrigger(prev => prev + 1);
       } catch (fetchError) {
         // If fetching from Supabase fails, we already have local chart data
         console.warn('Failed to fetch updated data from Supabase:', fetchError);
+        // Still trigger PartsTable refresh even if chart data fetch fails
+        setRefreshTrigger(prev => prev + 1);
       }
 
     } catch (e: any) {
@@ -233,6 +242,7 @@ const Dashboard: React.FC = () => {
         <h1>Issue Dashboard</h1>
       </header>
 
+      {/* Upload Section */}
       <div style={{ 
         maxWidth: '600px', 
         margin: '0 auto 40px auto', 
@@ -332,27 +342,97 @@ const Dashboard: React.FC = () => {
       {/* Metric Cards Grid */}
       <MetricCardsGrid totalSummary={totalSummary} />
 
-      {/* Charts Section - Two Column Layout */}
+      {/* Charts Section - 2x2 Grid Layout */}
       <div style={{ 
         maxWidth: '1400px', 
-        margin: '0 auto', 
+        margin: '0 auto 40px auto', 
         display: 'grid', 
         gridTemplateColumns: '1fr 1fr', 
-        gap: '50px',
+        gridTemplateRows: '1fr 1fr',
+        gap: '30px',
         padding: '0 20px'
       }}>
-        {/* Left Column - Issue Distribution (Total Issues Summary) */}
-        <div style={{ minWidth: '0', height: '550px' }}>
+        {/* Top Left - Issue Distribution (Total Issues Summary) */}
+        <div style={{ minWidth: '0', height: '400px' }}>
           <TotalIssuesSummary totalSummary={totalSummary} />
         </div>
 
-        {/* Right Column - Issue Proportion (Last Uploaded Chart) */}
-        <div style={{ minWidth: '0', height: '550px' }}>
+        {/* Top Right - Issue Proportion (Last Uploaded Chart) */}
+        <div style={{ minWidth: '0', height: '400px' }}>
           <LastUploadedChart 
             chartData={chartData} 
             isLoading={isLoading} 
           />
         </div>
+
+        {/* Bottom Left - Corrected Parts Chart */}
+        <div style={{ minWidth: '0', height: '400px' }}>
+          <CorrectedPartsChart refreshTrigger={refreshTrigger} />
+        </div>
+
+        {/* Bottom Right - Correction Summary Chart */}
+        <div style={{ minWidth: '0', height: '400px' }}>
+          <CorrectionSummaryChart refreshTrigger={refreshTrigger} />
+        </div>
+      </div>
+
+      {/* Parts Table Section */}
+      <div style={{ 
+        maxWidth: '1400px', 
+        margin: '0 auto',
+        padding: '0 20px'
+      }}>
+        {/* Search Bar */}
+        <div style={{ 
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }}>
+          <div style={{ position: 'relative', width: '300px' }}>
+            <input
+              type="text"
+              placeholder="Search parts (use / to activate)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 16px 8px 40px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                outline: 'none',
+                transition: 'border-color 0.2s ease',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#4A90E2';
+                e.target.style.boxShadow = '0 0 0 3px rgba(74, 144, 226, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#d1d5db';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+            <svg
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '16px',
+                height: '16px',
+                color: '#9ca3af'
+              }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Parts Table */}
+        <PartsTable searchTerm={searchTerm} refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
