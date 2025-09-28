@@ -10,6 +10,7 @@ import CorrectedPartsChart from './CorrectedPartsChart';
 import CorrectionSummaryChart from './CorrectionSummaryChart';
 import NavigationBar from './NavigationBar';
 import History from './History';
+import Admin from './Admin';
 
 // Define a type for the data returned by our Supabase function for type safety
 type IssueTypeSummary = {
@@ -258,17 +259,11 @@ const Dashboard: React.FC = () => {
       {/* Conditional Content Based on Active Tab */}
       {activeNavTab === 'History' ? (
         <History />
-      ) : activeNavTab === 'RealAdmin' ? (
-        <div style={{ padding: '40px', textAlign: 'center' }}>
-          <h2 style={{ color: '#1f2937', fontSize: '24px', fontWeight: '600', margin: '0 0 16px 0' }}>RealAdmin Panel</h2>
-          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>Admin functionality coming soon...</p>
-        </div>
+      ) : activeNavTab === 'Admin' ? (
+        <Admin refreshTrigger={refreshTrigger} />
       ) : (
         /* Main Dashboard Content */
         <div style={{ padding: '20px' }}>
-        <header style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h2 style={{ color: '#1f2937', fontSize: '24px', fontWeight: '600', margin: 0 }}>Issue Dashboard</h2>
-        </header>
 
       {/* Upload Section */}
       <div style={{ 

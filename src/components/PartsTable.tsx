@@ -46,9 +46,10 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     setIsLoading(true);
     
     try {
+      // First, get all issues without pagination to group them
       let query = supabase
         .from('issues')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('is_corrected', false)
         .order('created_at', { ascending: false });
 
@@ -57,20 +58,53 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
         query = query.or(`part_number.ilike.%${search}%,owner.ilike.%${search}%`);
       }
 
-      // Add pagination
-      const from = (page - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching issues:', error);
         return;
       }
 
-      setIssues(data || []);
-      setTotalCount(count || 0);
+      if (data) {
+        // Group issues by part_number and owner combination
+        const groupedIssues = new Map<string, Issue>();
+        
+        data.forEach((issue: Issue) => {
+          const key = `${issue.part_number}|${issue.owner || 'null'}`;
+          
+          if (groupedIssues.has(key)) {
+            // Combine issue types for the same part
+            const existingIssue = groupedIssues.get(key)!;
+            const combinedIssueTypes = existingIssue.issue_type.split(', ');
+            if (!combinedIssueTypes.includes(issue.issue_type)) {
+              combinedIssueTypes.push(issue.issue_type);
+              existingIssue.issue_type = combinedIssueTypes.join(', ');
+            }
+            // Keep the earliest created_at date
+            if (new Date(issue.created_at) < new Date(existingIssue.created_at)) {
+              existingIssue.created_at = issue.created_at;
+            }
+          } else {
+            // Add new unique part
+            groupedIssues.set(key, { ...issue });
+          }
+        });
+
+        // Convert back to array and apply pagination
+        const uniqueIssues = Array.from(groupedIssues.values());
+        const totalUniqueCount = uniqueIssues.length;
+        
+        // Apply pagination to grouped results
+        const from = (page - 1) * itemsPerPage;
+        const to = from + itemsPerPage;
+        const paginatedIssues = uniqueIssues.slice(from, to);
+
+        setIssues(paginatedIssues);
+        setTotalCount(totalUniqueCount);
+      } else {
+        setIssues([]);
+        setTotalCount(0);
+      }
     } catch (error) {
       console.error('Error fetching issues:', error);
     } finally {
@@ -82,9 +116,10 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     setIsLoading(true);
     
     try {
+      // First, get all corrected issues without pagination to group them
       let query = supabase
         .from('issues')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('is_corrected', true)
         .order('corrected_at', { ascending: false });
 
@@ -93,20 +128,55 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
         query = query.or(`part_number.ilike.%${search}%,owner.ilike.%${search}%`);
       }
 
-      // Add pagination
-      const from = (page - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching corrected parts:', error);
         return;
       }
 
-      setCorrectedParts(data || []);
-      setCorrectedTotalCount(count || 0);
+      if (data) {
+        // Group corrected issues by part_number and owner combination
+        const groupedCorrectedParts = new Map<string, Issue>();
+        
+        data.forEach((issue: Issue) => {
+          const key = `${issue.part_number}|${issue.owner || 'null'}`;
+          
+          if (groupedCorrectedParts.has(key)) {
+            // Combine issue types for the same part
+            const existingIssue = groupedCorrectedParts.get(key)!;
+            const combinedIssueTypes = existingIssue.issue_type.split(', ');
+            if (!combinedIssueTypes.includes(issue.issue_type)) {
+              combinedIssueTypes.push(issue.issue_type);
+              existingIssue.issue_type = combinedIssueTypes.join(', ');
+            }
+            // Keep the latest corrected_at date
+            if (issue.corrected_at && existingIssue.corrected_at) {
+              if (new Date(issue.corrected_at) > new Date(existingIssue.corrected_at)) {
+                existingIssue.corrected_at = issue.corrected_at;
+              }
+            }
+          } else {
+            // Add new unique corrected part
+            groupedCorrectedParts.set(key, { ...issue });
+          }
+        });
+
+        // Convert back to array and apply pagination
+        const uniqueCorrectedParts = Array.from(groupedCorrectedParts.values());
+        const totalUniqueCorrectedCount = uniqueCorrectedParts.length;
+        
+        // Apply pagination to grouped results
+        const from = (page - 1) * itemsPerPage;
+        const to = from + itemsPerPage;
+        const paginatedCorrectedParts = uniqueCorrectedParts.slice(from, to);
+
+        setCorrectedParts(paginatedCorrectedParts);
+        setCorrectedTotalCount(totalUniqueCorrectedCount);
+      } else {
+        setCorrectedParts([]);
+        setCorrectedTotalCount(0);
+      }
     } catch (error) {
       console.error('Error fetching corrected parts:', error);
     } finally {
@@ -150,23 +220,55 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
   };
 
   const getIssueTypeBadge = (issueType: string) => {
-    const color = getIssueTypeColor(issueType);
-    return (
-      <span
-        style={{
-          backgroundColor: color,
-          color: 'white',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          fontSize: '0.75rem',
-          fontWeight: '500',
-          textTransform: 'uppercase',
-          letterSpacing: '0.025em'
-        }}
-      >
-        {issueType}
-      </span>
-    );
+    // Handle multiple issue types separated by commas
+    const issueTypes = issueType.split(', ');
+    
+    if (issueTypes.length === 1) {
+      // Single issue type
+      const color = getIssueTypeColor(issueTypes[0]);
+      return (
+        <span
+          style={{
+            backgroundColor: color,
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '0.75rem',
+            fontWeight: '500',
+            textTransform: 'uppercase',
+            letterSpacing: '0.025em'
+          }}
+        >
+          {issueTypes[0]}
+        </span>
+      );
+    } else {
+      // Multiple issue types - show as separate badges
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+          {issueTypes.map((type, index) => {
+            const color = getIssueTypeColor(type);
+            return (
+              <span
+                key={index}
+                style={{
+                  backgroundColor: color,
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                  fontSize: '0.65rem',
+                  fontWeight: '500',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.025em'
+                }}
+              >
+                {type}
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -181,13 +283,36 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
   const markAsCorrected = async (issueId: string) => {
     setIsUpdating(issueId);
     try {
-      const { error } = await supabase
+      // First, get the part_number and owner for this issue
+      const { data: issueData, error: fetchError } = await supabase
+        .from('issues')
+        .select('part_number, owner')
+        .eq('id', issueId)
+        .single();
+
+      if (fetchError || !issueData) {
+        console.error('Error fetching issue data:', fetchError);
+        return;
+      }
+
+      // Update all records with the same part_number and owner
+      // Handle null owner values properly
+      let query = supabase
         .from('issues')
         .update({ 
           is_corrected: true, 
           corrected_at: new Date().toISOString() 
         })
-        .eq('id', issueId);
+        .eq('part_number', issueData.part_number);
+
+      // Handle owner field - use .is() for null values, .eq() for non-null values
+      if (issueData.owner === null) {
+        query = query.is('owner', null);
+      } else {
+        query = query.eq('owner', issueData.owner);
+      }
+
+      const { error } = await query;
 
       if (error) {
         console.error('Error marking as corrected:', error);
@@ -212,13 +337,36 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
   const markAsIncorrect = async (issueId: string) => {
     setIsUpdating(issueId);
     try {
-      const { error } = await supabase
+      // First, get the part_number and owner for this issue
+      const { data: issueData, error: fetchError } = await supabase
+        .from('issues')
+        .select('part_number, owner')
+        .eq('id', issueId)
+        .single();
+
+      if (fetchError || !issueData) {
+        console.error('Error fetching issue data:', fetchError);
+        return;
+      }
+
+      // Update all records with the same part_number and owner
+      // Handle null owner values properly
+      let query = supabase
         .from('issues')
         .update({ 
           is_corrected: false, 
           corrected_at: null 
         })
-        .eq('id', issueId);
+        .eq('part_number', issueData.part_number);
+
+      // Handle owner field - use .is() for null values, .eq() for non-null values
+      if (issueData.owner === null) {
+        query = query.is('owner', null);
+      } else {
+        query = query.eq('owner', issueData.owner);
+      }
+
+      const { error } = await query;
 
       if (error) {
         console.error('Error marking as incorrect:', error);
