@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 import TotalIssuesSummary from './TotalIssuesSummary';
-import MetricCardsGrid from './MetricCardsGrid';
+import DynamicMetricsPanel from './DynamicMetricsPanel';
 import LastUploadedChart from './LastUploadedChart';
 import PartsTable from './PartsTable';
 import CorrectedPartsChart from './CorrectedPartsChart';
@@ -362,8 +362,8 @@ const Dashboard: React.FC = () => {
 
       {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
 
-      {/* Metric Cards Grid */}
-      <MetricCardsGrid totalSummary={totalSummary} />
+      {/* Dynamic Metrics Panel */}
+      <DynamicMetricsPanel refreshTrigger={refreshTrigger} />
 
       {/* Charts Section - 2x2 Grid Layout */}
       <div style={{ 
