@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
 /* 
@@ -40,9 +40,11 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
   const [activeTab, setActiveTab] = useState<'issues' | 'corrected'>('issues');
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const itemsPerPage = 10;
 
-  const fetchIssues = async (page: number, search: string = '') => {
+  const fetchIssues = useCallback(async (page: number, search: string = '') => {
     setIsLoading(true);
     
     try {
@@ -55,7 +57,22 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
 
       // Add search filter if search term is provided
       if (search.trim()) {
-        query = query.or(`part_number.ilike.%${search}%,owner.ilike.%${search}%`);
+        const searchInput = search.trim();
+        
+        // Check if multiple part numbers are provided (separated by /)
+        if (searchInput.includes('/')) {
+          const partNumbers = searchInput.split('/').map(part => part.trim()).filter(part => part.length > 0);
+          
+          if (partNumbers.length > 0) {
+            // Create OR conditions for each part number
+            const partNumberConditions = partNumbers.map(partNum => `part_number.ilike.%${partNum}%`).join(',');
+            const ownerConditions = partNumbers.map(partNum => `owner.ilike.%${partNum}%`).join(',');
+            query = query.or(`${partNumberConditions},${ownerConditions}`);
+          }
+        } else {
+          // Single search term - search in both part_number and owner
+          query = query.or(`part_number.ilike.%${searchInput}%,owner.ilike.%${searchInput}%`);
+        }
       }
 
       const { data, error } = await query;
@@ -110,9 +127,9 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchCorrectedParts = async (page: number, search: string = '') => {
+  const fetchCorrectedParts = useCallback(async (page: number, search: string = '') => {
     setIsLoading(true);
     
     try {
@@ -125,7 +142,22 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
 
       // Add search filter if search term is provided
       if (search.trim()) {
-        query = query.or(`part_number.ilike.%${search}%,owner.ilike.%${search}%`);
+        const searchInput = search.trim();
+        
+        // Check if multiple part numbers are provided (separated by /)
+        if (searchInput.includes('/')) {
+          const partNumbers = searchInput.split('/').map(part => part.trim()).filter(part => part.length > 0);
+          
+          if (partNumbers.length > 0) {
+            // Create OR conditions for each part number
+            const partNumberConditions = partNumbers.map(partNum => `part_number.ilike.%${partNum}%`).join(',');
+            const ownerConditions = partNumbers.map(partNum => `owner.ilike.%${partNum}%`).join(',');
+            query = query.or(`${partNumberConditions},${ownerConditions}`);
+          }
+        } else {
+          // Single search term - search in both part_number and owner
+          query = query.or(`part_number.ilike.%${searchInput}%,owner.ilike.%${searchInput}%`);
+        }
       }
 
       const { data, error } = await query;
@@ -182,31 +214,40 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
+  // Debounce search term
   useEffect(() => {
-    if (activeTab === 'issues') {
-      fetchIssues(currentPage, searchTerm);
-    } else {
-      fetchCorrectedParts(correctedCurrentPage, searchTerm);
-    }
-  }, [currentPage, correctedCurrentPage, searchTerm, activeTab]);
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     setCurrentPage(1);
     setCorrectedCurrentPage(1);
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
+
+  useEffect(() => {
+    if (activeTab === 'issues') {
+      fetchIssues(currentPage, debouncedSearchTerm);
+    } else {
+      fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
+    }
+  }, [currentPage, correctedCurrentPage, debouncedSearchTerm, activeTab]);
 
   // Refresh data when refreshTrigger changes (e.g., after file upload)
   useEffect(() => {
     if (refreshTrigger > 0) {
       if (activeTab === 'issues') {
-        fetchIssues(currentPage, searchTerm);
+        fetchIssues(currentPage, debouncedSearchTerm);
       } else {
-        fetchCorrectedParts(correctedCurrentPage, searchTerm);
+        fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
       }
     }
-  }, [refreshTrigger, currentPage, correctedCurrentPage, searchTerm, activeTab]);
+  }, [refreshTrigger, currentPage, correctedCurrentPage, debouncedSearchTerm, activeTab]);
 
   const getIssueTypeColor = (issueType: string) => {
     const colors: { [key: string]: string } = {
@@ -320,8 +361,8 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
       }
 
       // Refresh both tables
-      fetchIssues(currentPage, searchTerm);
-      fetchCorrectedParts(correctedCurrentPage, searchTerm);
+      fetchIssues(currentPage, debouncedSearchTerm);
+      fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
       
       // Trigger charts refresh
       if (onRefreshCharts) {
@@ -374,8 +415,8 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
       }
 
       // Refresh both tables
-      fetchIssues(currentPage, searchTerm);
-      fetchCorrectedParts(correctedCurrentPage, searchTerm);
+      fetchIssues(currentPage, debouncedSearchTerm);
+      fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
       
       // Trigger charts refresh
       if (onRefreshCharts) {
@@ -455,7 +496,9 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
         borderBottom: '1px solid #e5e7eb',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'flex-start'
+        alignItems: 'flex-start',
+        gap: '20px',
+        flexWrap: 'wrap'
       }}>
         <div>
           <h2 style={{ 
@@ -475,28 +518,50 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
               ? `${totalCount} total issues found` 
               : `${correctedTotalCount} corrected parts`
             }
+            {debouncedSearchTerm && (
+              <span style={{ fontStyle: 'italic', marginLeft: '8px' }}>
+                {debouncedSearchTerm.includes('/') 
+                  ? `(filtered by ${debouncedSearchTerm.split('/').length} part numbers)`
+                  : `(filtered by "${debouncedSearchTerm}")`
+                }
+              </span>
+            )}
           </p>
         </div>
         
-        {/* Search Bar */}
+        {/* Small Search Bar - Top Right */}
         <div style={{ position: 'relative', width: '280px' }}>
           <input
+            ref={searchInputRef}
             type="text"
-            placeholder="Search parts (use / to activate)"
+            placeholder="Search parts (use / for multiple)"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              const cursorPosition = e.target.selectionStart;
+              setSearchTerm(newValue);
+              
+              // Restore cursor position after state update
+              setTimeout(() => {
+                if (searchInputRef.current) {
+                  searchInputRef.current.setSelectionRange(cursorPosition, cursorPosition);
+                }
+              }, 0);
+            }}
             style={{
               width: '100%',
-              padding: '8px 16px 8px 40px',
+              padding: '8px 12px 8px 32px',
+              paddingRight: searchTerm ? '32px' : '12px',
               border: '1px solid #d1d5db',
               borderRadius: '6px',
               fontSize: '0.875rem',
               outline: 'none',
               transition: 'border-color 0.2s ease',
+              boxSizing: 'border-box'
             }}
             onFocus={(e) => {
               e.target.style.borderColor = '#4A90E2';
-              e.target.style.boxShadow = '0 0 0 3px rgba(74, 144, 226, 0.1)';
+              e.target.style.boxShadow = '0 0 0 2px rgba(74, 144, 226, 0.1)';
             }}
             onBlur={(e) => {
               e.target.style.borderColor = '#d1d5db';
@@ -506,11 +571,11 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
           <svg
             style={{
               position: 'absolute',
-              left: '12px',
+              left: '10px',
               top: '50%',
               transform: 'translateY(-50%)',
-              width: '16px',
-              height: '16px',
+              width: '14px',
+              height: '14px',
               color: '#9ca3af'
             }}
             fill="none"
@@ -519,6 +584,30 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#9ca3af',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Clear search"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

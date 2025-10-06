@@ -405,8 +405,6 @@ const Dashboard: React.FC = () => {
         margin: '0 auto',
         padding: '0 20px'
       }}>
-
-
         {/* Parts Table */}
         <PartsTable refreshTrigger={refreshTrigger} onRefreshCharts={triggerChartsRefresh} />
         </div>
