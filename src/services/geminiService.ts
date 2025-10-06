@@ -5,7 +5,7 @@ const API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 if (!API_KEY) {
-  console.warn("Gemini API key not found. Chatbot functionality will be limited.");
+  console.warn("Gemini API key not found. Chatbot functionality will be limited have to work with what you haev.");
 }
 
 const getChatbotResponse = async (
