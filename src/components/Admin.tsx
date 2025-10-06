@@ -253,7 +253,96 @@ const Admin: React.FC<AdminProps> = ({ refreshTrigger = 0 }) => {
       }}>
         Admin Panel - Owner Issue Analysis
       </h2>
-      
+      {/* Aggregated total errors by owner - appears above the individual owner charts */}
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto 24px auto',
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        border: '1px solid #e5e7eb',
+        padding: '20px'
+      }}>
+        <h3 style={{
+          color: '#1f2937',
+          fontSize: '20px',
+          fontWeight: '600',
+          margin: '0 0 12px 0',
+          textAlign: 'center'
+        }}>
+          Total Errors by Owner
+        </h3>
+        <div style={{ height: '320px' }}>
+          {/* build chart data: for each owner compute corrected and notCorrected totals */}
+          {(() => {
+            const labels = OWNER_TYPES;
+            const correctedData = labels.map(owner => {
+              const ownerData = ownerChartsData[owner];
+              if (!ownerData) return 0;
+              return Object.values(ownerData).reduce((sum, val) => sum + (val.corrected || 0), 0);
+            });
+            const notCorrectedData = labels.map(owner => {
+              const ownerData = ownerChartsData[owner];
+              if (!ownerData) return 0;
+              return Object.values(ownerData).reduce((sum, val) => sum + (val.notCorrected || 0), 0);
+            });
+
+            const totalChartData = {
+              labels,
+              datasets: [
+                {
+                  label: 'Corrected',
+                  data: correctedData,
+                  backgroundColor: 'rgba(34, 197, 94, 0.85)',
+                  borderColor: 'rgba(34, 197, 94, 1)',
+                  borderWidth: 1,
+                },
+                {
+                  label: 'Not Corrected',
+                  data: notCorrectedData,
+                  backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                  borderColor: 'rgba(239, 68, 68, 1)',
+                  borderWidth: 1,
+                }
+              ]
+            };
+
+            const totalChartOptions = {
+              ...chartOptions,
+              plugins: {
+                ...chartOptions.plugins,
+                title: {
+                  display: false,
+                }
+              },
+              // For grouped bars (two bars per owner), do not stack scales
+              scales: {
+                ...chartOptions.scales,
+                x: {
+                  ...chartOptions.scales.x,
+                  stacked: false,
+                },
+                y: {
+                  ...chartOptions.scales.y,
+                  stacked: false,
+                }
+              },
+              // Make bars a bit narrower so pairs fit nicely
+              datasets: {
+                bar: {
+                  categoryPercentage: 0.6,
+                  barPercentage: 0.9,
+                }
+              }
+            };
+
+            return (
+              <Bar data={totalChartData} options={totalChartOptions} />
+            );
+          })()}
+        </div>
+      </div>
+
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(600px, 1fr))',
@@ -263,6 +352,12 @@ const Admin: React.FC<AdminProps> = ({ refreshTrigger = 0 }) => {
       }}>
         {OWNER_TYPES.map(owner => {
           const chartData = generateChartDataForOwner(owner);
+          // compute totals for the owner from ownerChartsData
+          const ownerData = ownerChartsData[owner];
+          const totalCorrected = ownerData ? Object.values(ownerData).reduce((sum, val) => sum + (val.corrected || 0), 0) : 0;
+          const totalNotCorrected = ownerData ? Object.values(ownerData).reduce((sum, val) => sum + (val.notCorrected || 0), 0) : 0;
+          const totalIssues = totalCorrected + totalNotCorrected;
+
           return (
             <div key={owner} style={{
               backgroundColor: '#ffffff',
@@ -317,6 +412,17 @@ const Admin: React.FC<AdminProps> = ({ refreshTrigger = 0 }) => {
                     )}
                   </div>
                 )}
+              </div>
+              {/* Totals summary below the chart */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginTop: '16px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827' }}>{totalIssues}</div>
+                  <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Issues</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#16a34a' }}>{totalCorrected}</div>
+                  <div style={{ fontSize: '12px', color: '#6b7280' }}>Corrected Issues</div>
+                </div>
               </div>
             </div>
           );

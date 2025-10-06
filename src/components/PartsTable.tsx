@@ -48,6 +48,7 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
   const searchInputRef = useRef<HTMLInputElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
+  const [jumpPage, setJumpPage] = useState<string>('');
 
   const fetchIssues = useCallback(async (page: number, search: string = '') => {
     setIsLoading(true);
@@ -493,6 +494,20 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const correctedTotalPages = Math.ceil(correctedTotalCount / itemsPerPage);
+
+  const handleJumpToPage = () => {
+    const raw = jumpPage.trim();
+    if (!raw) return;
+    const target = Math.max(1, Math.floor(Number(raw)));
+    if (activeTab === 'issues') {
+      const clamped = Math.min(totalPages || 1, target);
+      setCurrentPage(clamped);
+    } else {
+      const clamped = Math.min(correctedTotalPages || 1, target);
+      setCorrectedCurrentPage(clamped);
+    }
+    setJumpPage('');
+  };
 
   if (isLoading) {
     return (
@@ -1059,13 +1074,72 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
               Next
             </button>
           </div>
-          
-          <span style={{ 
-            fontSize: '0.875rem',
-            color: '#6b7280'
-          }}>
-            Page {activeTab === 'issues' ? currentPage : correctedCurrentPage} of {activeTab === 'issues' ? totalPages : correctedTotalPages}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Page number buttons */}
+            {(() => {
+              const pagesToShow = 9; // max number of page buttons to display
+              const total = activeTab === 'issues' ? totalPages : correctedTotalPages;
+              const current = activeTab === 'issues' ? currentPage : correctedCurrentPage;
+              if (total <= 1) return null;
+
+              const pageItems: (number | '...')[] = [];
+
+              if (total <= pagesToShow) {
+                for (let i = 1; i <= total; i++) pageItems.push(i);
+              } else {
+                const side = Math.floor((pagesToShow - 3) / 2); // pages around current
+                let left = Math.max(2, current - side);
+                let right = Math.min(total - 1, current + side);
+
+                // adjust if we're near the start or end
+                if (current - 1 <= side) {
+                  left = 2;
+                  right = pagesToShow - 2;
+                } else if (total - current <= side) {
+                  left = total - (pagesToShow - 3);
+                  right = total - 1;
+                }
+
+                pageItems.push(1);
+                if (left > 2) pageItems.push('...');
+                for (let i = left; i <= right; i++) pageItems.push(i);
+                if (right < total - 1) pageItems.push('...');
+                pageItems.push(total);
+              }
+
+              return pageItems.map((p, idx) => {
+                if (p === '...') {
+                  return (
+                    <span key={`dots-${idx}`} style={{ color: '#9ca3af' }}>…</span>
+                  );
+                }
+                const pageNum = p as number;
+                const isActive = pageNum === (activeTab === 'issues' ? currentPage : correctedCurrentPage);
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => {
+                      if (activeTab === 'issues') setCurrentPage(pageNum);
+                      else setCorrectedCurrentPage(pageNum);
+                    }}
+                    style={{
+                      padding: '6px 8px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: isActive ? 'white' : '#2563eb',
+                      backgroundColor: isActive ? '#2563eb' : 'transparent',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      minWidth: '28px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              });
+            })()}
+          </div>
         </div>
       )}
 
