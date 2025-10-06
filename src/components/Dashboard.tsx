@@ -11,12 +11,11 @@ import CorrectionSummaryChart from './CorrectionSummaryChart';
 import NavigationBar from './NavigationBar';
 import History from './History';
 import Admin from './Admin';
+import { Chatbot } from './Chatbot';
+import { PartNumber, QAReport, PartNumberCategory } from '../types';
 
-// Define a type for the data returned by our Supabase function for type safety
-type IssueTypeSummary = {
-  issue_type: string;
-  error_count: number;
-};
+
+
 
 const Dashboard: React.FC = () => {
   const [chartData, setChartData] = useState<any>(null);
@@ -26,6 +25,8 @@ const Dashboard: React.FC = () => {
   const [totalSummary, setTotalSummary] = useState<{[key: string]: number}>({});
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [activeNavTab, setActiveNavTab] = useState<string>('Dashboard');
+  const [partsData, setPartsData] = useState<PartNumber[]>([]);
+  const [reportsData, setReportsData] = useState<QAReport[]>([]);
 
   // Function to trigger refresh of all charts when parts are corrected/marked incorrect
   const triggerChartsRefresh = () => {
@@ -34,6 +35,79 @@ const Dashboard: React.FC = () => {
       console.log('refreshTrigger updated from', prev, 'to', prev + 1);
       return prev + 1;
     });
+  };
+
+  // Helper function to map issue_type to PartNumberCategory
+  const mapIssueTypeToCategory = (issueType: string): PartNumberCategory | undefined => {
+    const trimmedType = issueType.trim();
+    switch (trimmedType) {
+      case 'NonEnglishCharacters':
+        return PartNumberCategory.NON_ENGLISH_CHARACTERS;
+      case 'Part Number Validation':
+        return PartNumberCategory.PART_NUMBER_VALIDATION;
+      case 'Part Numbers Missing Extension':
+        return PartNumberCategory.PART_NUMBERS_MISSING_EXTENSION;
+      case 'Surface Parts Report':
+        return PartNumberCategory.SURFACE_PARTS_REPORT;
+      case 'Toolbox Parts':
+        return PartNumberCategory.TOOLBOX_PARTS;
+      default:
+        return undefined;
+    }
+  };
+
+  // Fetch data for chatbot
+  const fetchChatbotData = async () => {
+    try {
+      // Fetch all issues
+      const { data: issuesData, error: issuesError } = await supabase
+        .from('issues')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Fetch all reports
+      const { data: reportsDataRaw, error: reportsError } = await supabase
+        .from('reports')
+        .select('*')
+        .order('uploaded_at', { ascending: false });
+
+      if (issuesError || reportsError) {
+        console.error('Error fetching chatbot data:', issuesError || reportsError);
+        return;
+      }
+
+      // Transform issues to PartNumber format
+      const transformedParts: PartNumber[] = (issuesData || []).map((issue: any) => {
+        const issueTypes = issue.issue_type.split(', ').map((type: string) => type.trim());
+        const categories = issueTypes
+          .map((type: string) => mapIssueTypeToCategory(type))
+          .filter((cat: PartNumberCategory | undefined): cat is PartNumberCategory => cat !== undefined);
+
+        return {
+          id: issue.id,
+          value: issue.part_number,
+          categories: categories.length > 0 ? categories : undefined,
+          status: issue.is_corrected ? 'corrected' : 'open',
+          dateAdded: issue.created_at,
+          dateCorrected: issue.corrected_at || undefined,
+          reportId: issue.report_id,
+          owner: issue.owner || undefined,
+        };
+      });
+
+      // Transform reports to QAReport format
+      const transformedReports: QAReport[] = (reportsDataRaw || []).map((report: any) => ({
+        id: report.id,
+        fileName: report.file_name,
+        uploadDate: report.uploaded_at,
+        totalPartsAnalyzed: report.total_issues || 0,
+      }));
+
+      setPartsData(transformedParts);
+      setReportsData(transformedReports);
+    } catch (error) {
+      console.error('Error fetching chatbot data:', error);
+    }
   };
 
   // This function fetches the aggregated data from the DB and populates the chart
@@ -108,7 +182,16 @@ const Dashboard: React.FC = () => {
   // Fetch initial data when the component loads
   useEffect(() => {
     fetchChartData();
+    fetchChatbotData();
   }, []);
+
+  // Refresh chatbot data when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchChatbotData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -410,6 +493,9 @@ const Dashboard: React.FC = () => {
         </div>
         </div>
       )}
+      
+      {/* Chatbot - Always visible on Dashboard and other tabs */}
+      <Chatbot partsData={partsData} reportsData={reportsData} />
     </div>
   );
 };

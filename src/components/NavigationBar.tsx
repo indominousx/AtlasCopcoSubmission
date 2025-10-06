@@ -69,7 +69,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ activeTab = 'Dashboard', 
         alignItems: 'center',
         gap: '8px'
       }}>
-        {['Admin', 'Dashboard', 'History'].map((tab) => (
+        {['Admin', 'Dashboard', 'History', 'Chatbot'].map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabClick(tab)}
