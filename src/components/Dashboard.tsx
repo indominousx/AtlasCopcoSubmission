@@ -460,7 +460,7 @@ const Dashboard: React.FC = () => {
       }}>
         {/* Top Left - Issue Distribution (Total Issues Summary) */}
         <div style={{ minWidth: '0', height: '400px' }}>
-          <TotalIssuesSummary totalSummary={totalSummary} />
+          <TotalIssuesSummary totalSummary={totalSummary} refreshTrigger={refreshTrigger} />
         </div>
 
         {/* Top Right - Issue Proportion (Last Uploaded Chart) */}

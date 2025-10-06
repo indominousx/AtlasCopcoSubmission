@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -9,19 +9,87 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { supabase } from '../supabaseClient';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface TotalIssuesSummaryProps {
-  totalSummary: { [key: string]: number };
+  totalSummary?: { [key: string]: number };
+  refreshTrigger?: number;
 }
 
-const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary }) => {
-  if (Object.keys(totalSummary).length === 0) {
-    return null;
-  }
+const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary: propSummary, refreshTrigger }) => {
+  const [totalSummary, setTotalSummary] = useState<{ [key: string]: number }>(propSummary || {});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const grandTotal = Object.values(totalSummary).reduce((sum, count) => sum + count, 0);
+  // Fetch dynamic data from database
+  const fetchIssueCounts = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch all open issues (not corrected)
+      const { data, error } = await supabase
+        .from('issues')
+        .select('issue_type, part_number, owner, is_corrected')
+        .eq('is_corrected', false);
+
+      if (error) {
+        console.error('Error fetching issue counts:', error);
+        return;
+      }
+
+      if (data) {
+        // Group by part_number and owner to get unique parts
+        const uniqueParts = new Map<string, Set<string>>();
+        
+        data.forEach((issue: any) => {
+          const key = `${issue.part_number}|${issue.owner || 'null'}`;
+          
+          if (!uniqueParts.has(issue.issue_type)) {
+            uniqueParts.set(issue.issue_type, new Set());
+          }
+          uniqueParts.get(issue.issue_type)!.add(key);
+        });
+
+        // Convert to summary object
+        const summary: { [key: string]: number } = {};
+        uniqueParts.forEach((parts, issueType) => {
+          summary[issueType] = parts.size;
+        });
+
+        setTotalSummary(summary);
+      }
+    } catch (error) {
+      console.error('Error fetching issue counts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data on mount and when refreshTrigger changes
+  useEffect(() => {
+    fetchIssueCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
+
+  if (Object.keys(totalSummary).length === 0 && !isLoading) {
+    return (
+      <div style={{ 
+        width: '100%', 
+        height: '100%',
+        padding: '20px', 
+        backgroundColor: '#ffffff', 
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        border: '1px solid #e5e7eb',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#6b7280'
+      }}>
+        No open issues found
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
@@ -48,14 +116,14 @@ const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary })
         color: '#6b7280',
         fontSize: '14px'
       }}>
-        Breakdown of new part number issues by category.
+        Current open issues by category (updates dynamically)
       </p>
       <div style={{ flex: 1, minHeight: 0 }}>
         <Bar 
           data={{
             labels: Object.keys(totalSummary),
             datasets: [{
-              label: 'Total Unique Issues (All Time)',
+              label: 'Open Issues (Current)',
               data: Object.values(totalSummary),
             backgroundColor: [
               'rgba(255, 99, 132, 0.8)',
