@@ -43,6 +43,8 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [showCalendar, setShowCalendar] = useState<boolean>(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
@@ -110,10 +112,28 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
           }
         });
 
-        // Convert back to array and apply pagination
-        const uniqueIssues = Array.from(groupedIssues.values());
+        // Convert back to array
+        const uniqueIssuesAll = Array.from(groupedIssues.values());
+
+        // Compute available categories from the raw grouped results
+        const categorySet = new Set<string>();
+        uniqueIssuesAll.forEach((issue: Issue) => {
+          issue.issue_type.split(', ').forEach(type => {
+            if (type && type.trim()) categorySet.add(type.trim());
+          });
+        });
+        setCategories(Array.from(categorySet).sort());
+
+        // Apply category filter if set
+        let uniqueIssues = uniqueIssuesAll;
+        if (selectedCategory) {
+          uniqueIssues = uniqueIssuesAll.filter(issue =>
+            issue.issue_type.split(', ').map(s => s.trim()).includes(selectedCategory)
+          );
+        }
+
         const totalUniqueCount = uniqueIssues.length;
-        
+
         // Apply pagination to grouped results
         const from = (page - 1) * itemsPerPage;
         const to = from + itemsPerPage;
@@ -130,7 +150,7 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedCategory]);
 
   const fetchCorrectedParts = useCallback(async (page: number, search: string = '') => {
     setIsLoading(true);
@@ -197,10 +217,29 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
           }
         });
 
-        // Convert back to array and apply pagination
-        const uniqueCorrectedParts = Array.from(groupedCorrectedParts.values());
+        // Convert back to array
+        const uniqueCorrectedAll = Array.from(groupedCorrectedParts.values());
+
+        // Compute available categories from the raw grouped corrected results
+        const categorySet = new Set<string>();
+        uniqueCorrectedAll.forEach((issue: Issue) => {
+          issue.issue_type.split(', ').forEach(type => {
+            if (type && type.trim()) categorySet.add(type.trim());
+          });
+        });
+        // Merge with existing categories (so tabs share the same set)
+        setCategories(prev => Array.from(new Set([...prev, ...Array.from(categorySet)])).sort());
+
+        // Apply category filter if set
+        let uniqueCorrectedParts = uniqueCorrectedAll;
+        if (selectedCategory) {
+          uniqueCorrectedParts = uniqueCorrectedAll.filter(issue =>
+            issue.issue_type.split(', ').map(s => s.trim()).includes(selectedCategory)
+          );
+        }
+
         const totalUniqueCorrectedCount = uniqueCorrectedParts.length;
-        
+
         // Apply pagination to grouped results
         const from = (page - 1) * itemsPerPage;
         const to = from + itemsPerPage;
@@ -217,7 +256,7 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedCategory]);
 
   // Debounce search term
   useEffect(() => {
@@ -247,13 +286,19 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     setCorrectedCurrentPage(1);
   }, [debouncedSearchTerm]);
 
+  // Reset pagination when category filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setCorrectedCurrentPage(1);
+  }, [selectedCategory]);
+
   useEffect(() => {
     if (activeTab === 'issues') {
       fetchIssues(currentPage, debouncedSearchTerm);
     } else {
       fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
     }
-  }, [currentPage, correctedCurrentPage, debouncedSearchTerm, activeTab]);
+  }, [currentPage, correctedCurrentPage, debouncedSearchTerm, activeTab, selectedCategory]);
 
   // Refresh data when refreshTrigger changes (e.g., after file upload)
   useEffect(() => {
@@ -670,7 +715,28 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid #e5e7eb'
               }}>
-                Issue Categories
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                  <span>Issue Categories</span>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    style={{
+                      padding: '6px 8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      color: '#374151',
+                      background: 'white',
+                      cursor: 'pointer'
+                    }}
+                    title="Filter by issue category"
+                  >
+                    <option value="">All Categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
               </th>
               <th style={{ 
                 padding: '12px 16px',
