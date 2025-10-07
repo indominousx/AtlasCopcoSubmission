@@ -45,6 +45,8 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
   const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
@@ -293,6 +295,11 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     setCorrectedCurrentPage(1);
   }, [selectedCategory]);
 
+  // Clear selections when changing tabs or pages
+  useEffect(() => {
+    setSelectedIssueIds(new Set());
+  }, [activeTab, currentPage, correctedCurrentPage]);
+
   useEffect(() => {
     if (activeTab === 'issues') {
       fetchIssues(currentPage, debouncedSearchTerm);
@@ -492,6 +499,133 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     }
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    const currentList = activeTab === 'issues' ? issues : correctedParts;
+    if (checked) {
+      setSelectedIssueIds(new Set(currentList.map(issue => issue.id)));
+    } else {
+      setSelectedIssueIds(new Set());
+    }
+  };
+
+  const handleSelectIssue = (issueId: string, checked: boolean) => {
+    const newSelection = new Set(selectedIssueIds);
+    if (checked) {
+      newSelection.add(issueId);
+    } else {
+      newSelection.delete(issueId);
+    }
+    setSelectedIssueIds(newSelection);
+  };
+
+  const bulkMarkAsCorrected = async () => {
+    if (selectedIssueIds.size === 0) return;
+    
+    setIsBulkUpdating(true);
+    try {
+      const currentList = activeTab === 'issues' ? issues : correctedParts;
+      const selectedIssues = currentList.filter(issue => selectedIssueIds.has(issue.id));
+      
+      // Get unique part_number and owner combinations
+      const uniqueParts = new Map<string, { part_number: string; owner: string | null }>();
+      selectedIssues.forEach(issue => {
+        const key = `${issue.part_number}|${issue.owner || 'null'}`;
+        if (!uniqueParts.has(key)) {
+          uniqueParts.set(key, { part_number: issue.part_number, owner: issue.owner });
+        }
+      });
+
+      // Update each unique part
+      for (const part of Array.from(uniqueParts.values())) {
+        let query = supabase
+          .from('issues')
+          .update({ 
+            is_corrected: true, 
+            corrected_at: new Date().toISOString() 
+          })
+          .eq('part_number', part.part_number);
+
+        if (part.owner === null) {
+          query = query.is('owner', null);
+        } else {
+          query = query.eq('owner', part.owner);
+        }
+
+        const { error } = await query;
+        if (error) {
+          console.error('Error in bulk update:', error);
+        }
+      }
+
+      // Clear selection and refresh
+      setSelectedIssueIds(new Set());
+      fetchIssues(currentPage, debouncedSearchTerm);
+      fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
+      
+      if (onRefreshCharts) {
+        onRefreshCharts();
+      }
+    } catch (error) {
+      console.error('Error in bulk mark as corrected:', error);
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const bulkMarkAsIncorrect = async () => {
+    if (selectedIssueIds.size === 0) return;
+    
+    setIsBulkUpdating(true);
+    try {
+      const currentList = activeTab === 'issues' ? issues : correctedParts;
+      const selectedIssues = currentList.filter(issue => selectedIssueIds.has(issue.id));
+      
+      // Get unique part_number and owner combinations
+      const uniqueParts = new Map<string, { part_number: string; owner: string | null }>();
+      selectedIssues.forEach(issue => {
+        const key = `${issue.part_number}|${issue.owner || 'null'}`;
+        if (!uniqueParts.has(key)) {
+          uniqueParts.set(key, { part_number: issue.part_number, owner: issue.owner });
+        }
+      });
+
+      // Update each unique part
+      for (const part of Array.from(uniqueParts.values())) {
+        let query = supabase
+          .from('issues')
+          .update({ 
+            is_corrected: false, 
+            corrected_at: null 
+          })
+          .eq('part_number', part.part_number);
+
+        if (part.owner === null) {
+          query = query.is('owner', null);
+        } else {
+          query = query.eq('owner', part.owner);
+        }
+
+        const { error } = await query;
+        if (error) {
+          console.error('Error in bulk update:', error);
+        }
+      }
+
+      // Clear selection and refresh
+      setSelectedIssueIds(new Set());
+      fetchIssues(currentPage, debouncedSearchTerm);
+      fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
+      
+      if (onRefreshCharts) {
+        onRefreshCharts();
+      }
+    } catch (error) {
+      console.error('Error in bulk mark as incorrect:', error);
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const correctedTotalPages = Math.ceil(correctedTotalCount / itemsPerPage);
 
@@ -599,6 +733,11 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
                 ? `${totalCount} total issues found` 
                 : `${correctedTotalCount} corrected parts`
               }
+              {selectedIssueIds.size > 0 && (
+                <span style={{ fontWeight: '600', marginLeft: '8px', color: '#4A90E2' }}>
+                  ({selectedIssueIds.size} selected)
+                </span>
+              )}
               {debouncedSearchTerm && (
                 <span style={{ fontStyle: 'italic', marginLeft: '8px' }}>
                   {debouncedSearchTerm.includes('/') 
@@ -696,6 +835,86 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
             )}
           </div>
         </div>
+
+        {/* Bulk Action Buttons */}
+        {selectedIssueIds.size > 0 && (
+          <div style={{ 
+            display: 'flex',
+            gap: '12px',
+            marginTop: '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e5e7eb'
+          }}>
+            {activeTab === 'issues' ? (
+              <button
+                onClick={bulkMarkAsCorrected}
+                disabled={isBulkUpdating}
+                style={{
+                  backgroundColor: isBulkUpdating ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px 20px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: isBulkUpdating ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                  opacity: isBulkUpdating ? 0.7 : 1
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                {isBulkUpdating ? 'Updating...' : `Mark ${selectedIssueIds.size} as Corrected`}
+              </button>
+            ) : (
+              <button
+                onClick={bulkMarkAsIncorrect}
+                disabled={isBulkUpdating}
+                style={{
+                  backgroundColor: isBulkUpdating ? '#9ca3af' : '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px 20px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: isBulkUpdating ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                  opacity: isBulkUpdating ? 0.7 : 1
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                {isBulkUpdating ? 'Updating...' : `Mark ${selectedIssueIds.size} as Incorrect`}
+              </button>
+            )}
+            <button
+              onClick={() => setSelectedIssueIds(new Set())}
+              disabled={isBulkUpdating}
+              style={{
+                backgroundColor: 'white',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                padding: '10px 20px',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                cursor: isBulkUpdating ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Clear Selection
+            </button>
+          </div>
+        )}
         
 
       </div>
@@ -708,6 +927,28 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
         }}>
           <thead>
             <tr style={{ backgroundColor: '#f9fafb' }}>
+              <th style={{ 
+                padding: '12px 16px',
+                textAlign: 'center',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: '#374151',
+                width: '50px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={selectedIssueIds.size > 0 && selectedIssueIds.size === (activeTab === 'issues' ? issues : correctedParts).length}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    cursor: 'pointer',
+                    accentColor: '#4A90E2'
+                  }}
+                  title="Select all on this page"
+                />
+              </th>
               <th style={{ 
                 padding: '12px 16px',
                 textAlign: 'left',
@@ -930,13 +1171,32 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
                 key={issue.id}
                 style={{ 
                   borderBottom: index < (activeTab === 'issues' ? issues : correctedParts).length - 1 ? '1px solid #e5e7eb' : 'none',
-                  backgroundColor: hoveredRowId === issue.id ? '#f9fafb' : 'transparent',
+                  backgroundColor: selectedIssueIds.has(issue.id) ? '#eff6ff' : (hoveredRowId === issue.id ? '#f9fafb' : 'transparent'),
                   cursor: 'pointer',
                   transition: 'background-color 0.2s ease'
                 }}
                 onMouseEnter={() => setHoveredRowId(issue.id)}
                 onMouseLeave={() => setHoveredRowId(null)}
               >
+                <td style={{ 
+                  padding: '16px',
+                  textAlign: 'center'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIssueIds.has(issue.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleSelectIssue(issue.id, e.target.checked);
+                    }}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      cursor: 'pointer',
+                      accentColor: '#4A90E2'
+                    }}
+                  />
+                </td>
                 <td style={{ 
                   padding: '16px',
                   fontSize: '0.875rem',
