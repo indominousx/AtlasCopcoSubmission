@@ -33,24 +33,15 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ activeTab = 'Dashboard', 
         gap: '12px'
       }}>
         {/* Icon/Logo */}
-        <div style={{
-          width: '32px',
-          height: '32px',
-          backgroundColor: 'rgba(255, 255, 255, 0.2)',
-          borderRadius: '4px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <svg 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="currentColor"
-          >
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
-        </div>
+        <img 
+          src="https://i.ibb.co/LdyMDQDQ/Generated-Image-November-05-2025-11-43-AM-1.png" 
+          alt="PRISM Logo" 
+          style={{
+            height: '40px',
+            width: 'auto',
+            objectFit: 'contain'
+          }}
+        />
         
         {/* Title */}
         <h1 style={{

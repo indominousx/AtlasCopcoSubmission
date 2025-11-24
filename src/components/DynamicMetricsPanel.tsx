@@ -351,7 +351,7 @@ const DynamicMetricsPanel: React.FC<DynamicMetricsPanelProps> = ({ refreshTrigge
   return (
     <div style={{ 
       maxWidth: '1400px', 
-      margin: '0 auto 40px auto', 
+      margin: '0 auto 20px auto', 
       padding: '0 20px'
     }}>
 

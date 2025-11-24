@@ -104,7 +104,7 @@ const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary: p
       flexDirection: 'column'
     }}>
       <h3 style={{ 
-        margin: '0 0 8px 0', 
+        margin: '0 0 4px 0', 
         color: '#1f2937',
         fontSize: '18px',
         fontWeight: '600'
@@ -112,7 +112,7 @@ const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary: p
         Issue Distribution
       </h3>
       <p style={{ 
-        margin: '0 0 20px 0', 
+        margin: '0 0 12px 0', 
         color: '#6b7280',
         fontSize: '14px'
       }}>

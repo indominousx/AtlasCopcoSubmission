@@ -456,7 +456,7 @@ const Dashboard: React.FC = () => {
         gridTemplateColumns: '1fr 1fr', 
         gridTemplateRows: '1fr 1fr',
         gap: '50px',
-        padding: '40px'
+        padding: '20px 40px 40px 40px'
       }}>
         {/* Top Left - Issue Distribution (Total Issues Summary) */}
         <div style={{ minWidth: '0', height: '400px' }}>

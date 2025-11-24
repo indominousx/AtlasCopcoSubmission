@@ -110,10 +110,10 @@ const LastUploadedChart: React.FC<LastUploadedChartProps> = ({ chartData, isLoad
       flexDirection: 'column'
     }}>
       {/* Header Section */}
-      <div style={{ marginBottom: '8px' }}>
+      <div style={{ marginBottom: '4px' }}>
         <h3 style={{ 
           color: '#1f2937', 
-          margin: '0 0 8px 0',
+          margin: '0 0 4px 0',
           fontSize: '18px',
           fontWeight: '600'
         }}>
@@ -123,7 +123,7 @@ const LastUploadedChart: React.FC<LastUploadedChartProps> = ({ chartData, isLoad
         {/* Last Uploaded File Link */}
         {lastUploadedFileName ? (
           <p style={{ 
-            margin: '0 0 20px 0', 
+            margin: '0 0 12px 0', 
             color: '#131c2aff',
             fontSize: '20px',
             fontWeight: '500'
@@ -132,7 +132,7 @@ const LastUploadedChart: React.FC<LastUploadedChartProps> = ({ chartData, isLoad
           </p>
         ) : chartData && chartData.labels && chartData.labels.length > 0 && (
           <p style={{ 
-            margin: '0 0 20px 0', 
+            margin: '0 0 12px 0', 
             color: '#6b7280',
             fontSize: '20px'
           }}>
