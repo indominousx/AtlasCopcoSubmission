@@ -112,7 +112,7 @@ ${JSON.stringify(full_data_context, null, 2)}
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-3-flash-preview",
       contents: question,
       config: {
         systemInstruction: systemInstruction,

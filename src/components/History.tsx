@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { db } from '../mysqlClient';
 
 interface HistoryRecord {
   id: string;
@@ -18,7 +18,7 @@ const History: React.FC = () => {
     setError('');
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('reports')
         .select('id, file_name, uploaded_at, total_issues')
         .order('uploaded_at', { ascending: false });

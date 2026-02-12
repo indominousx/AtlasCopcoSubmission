@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
-import { supabase } from '../supabaseClient';
+import { db } from '../mysqlClient';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -43,7 +43,7 @@ const CorrectionSummaryChart: React.FC<CorrectionSummaryChartProps> = ({ refresh
     
     try {
       // Get all issues with their correction status
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('issues')
         .select('issue_type, is_corrected')
         .order('issue_type');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { db } from '../mysqlClient';
 
 interface DynamicMetricsPanelProps {
   refreshTrigger?: number;
@@ -81,7 +81,7 @@ const DynamicMetricsPanel: React.FC<DynamicMetricsPanelProps> = ({ refreshTrigge
     setError('');
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('issues')
         .select('part_number, owner, issue_type, is_corrected');
 

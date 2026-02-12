@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { supabase } from '../supabaseClient';
+import { db } from '../mysqlClient';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -27,7 +27,7 @@ const TotalIssuesSummary: React.FC<TotalIssuesSummaryProps> = ({ totalSummary: p
     setIsLoading(true);
     try {
       // Fetch all open issues (not corrected)
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('issues')
         .select('issue_type, part_number, owner, is_corrected')
         .eq('is_corrected', false);

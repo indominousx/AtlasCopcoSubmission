@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
-import { supabase } from '../supabaseClient';
+import { db } from '../mysqlClient';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -41,7 +41,7 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
     
     try {
       // First, get all possible issue types from the database
-      const { data: allIssuesData, error: allIssuesError } = await supabase
+      const { data: allIssuesData, error: allIssuesError } = await db
         .from('issues')
         .select('issue_type')
         .order('issue_type');
@@ -53,11 +53,11 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
       }
 
       // Get unique issue types
-      const issueTypeSet = new Set(allIssuesData?.map(item => item.issue_type) || []);
-      const allIssueTypes = Array.from(issueTypeSet);
+      const issueTypeSet = new Set(allIssuesData?.map((item: any) => item.issue_type) || []);
+      const allIssueTypes = Array.from(issueTypeSet) as string[];
       
       // Query corrected parts grouped by issue_type
-      const { data: correctedData, error } = await supabase
+      const { data: correctedData, error } = await db
         .from('issues')
         .select('issue_type')
         .eq('is_corrected', true)
@@ -71,7 +71,7 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
 
       // Initialize all issue types with 0 count
       const issueGroups: { [key: string]: number } = {};
-      allIssueTypes.forEach(issueType => {
+      allIssueTypes.forEach((issueType: string) => {
         issueGroups[issueType] = 0;
       });
       
@@ -86,7 +86,7 @@ const CorrectedPartsChart: React.FC<CorrectedPartsChartProps> = ({ refreshTrigge
 
       // Convert to chart format - show all categories
       const labels = allIssueTypes;
-      const counts = labels.map(label => issueGroups[label]);
+      const counts = labels.map((label: string) => issueGroups[label]);
 
       // Use consistent green color for all bars (matching the image)
       const backgroundColor = 'rgba(34, 197, 94, 0.8)'; // Green color

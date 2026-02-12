@@ -1,0 +1,2 @@
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'atlas2026';
+FLUSH PRIVILEGES;

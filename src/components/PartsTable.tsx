@@ -1,17 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../supabaseClient';
-
-/* 
-DATABASE SCHEMA UPDATE REQUIRED:
-Add the following columns to your 'issues' table in Supabase:
-- is_corrected BOOLEAN DEFAULT FALSE
-- corrected_at TIMESTAMP NULL
-
-SQL:
-ALTER TABLE issues 
-ADD COLUMN is_corrected BOOLEAN DEFAULT FALSE,
-ADD COLUMN corrected_at TIMESTAMP NULL;
-*/
+import { db } from '../mysqlClient';
 
 interface Issue {
   id: string;
@@ -57,7 +45,7 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     
     try {
       // First, get all issues without pagination to group them
-      let query = supabase
+      let query = db
         .from('issues')
         .select('*')
         .eq('is_corrected', false)
@@ -160,7 +148,7 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     
     try {
       // First, get all corrected issues without pagination to group them
-      let query = supabase
+      let query = db
         .from('issues')
         .select('*')
         .eq('is_corrected', true)
@@ -391,46 +379,26 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     });
   };
 
-  const markAsCorrected = async (issueId: string) => {
-    setIsUpdating(issueId);
+  const markAsCorrected = async (partNumber: string, owner: string | null) => {
+    setIsUpdating(`${partNumber}|${owner ?? 'null'}`);
     try {
-      // First, get the part_number and owner for this issue
-      const { data: issueData, error: fetchError } = await supabase
-        .from('issues')
-        .select('part_number, owner')
-        .eq('id', issueId)
-        .single();
-
-      if (fetchError || !issueData) {
-        console.error('Error fetching issue data:', fetchError);
-        return;
-      }
-
       // Update all records with the same part_number and owner
-      // Handle null owner values properly
-      let query = supabase
+      const { error } = await db
         .from('issues')
         .update({ 
           is_corrected: true, 
           corrected_at: new Date().toISOString() 
         })
-        .eq('part_number', issueData.part_number);
-
-      // Handle owner field - use .is() for null values, .eq() for non-null values
-      if (issueData.owner === null) {
-        query = query.is('owner', null);
-      } else {
-        query = query.eq('owner', issueData.owner);
-      }
-
-      const { error } = await query;
+        .eq('part_number', partNumber)
+        .eq('owner', owner);
 
       if (error) {
         console.error('Error marking as corrected:', error);
         return;
       }
 
-      // Refresh both tables
+      // Clear selection and refresh both tables
+      setSelectedIssueIds(new Set());
       fetchIssues(currentPage, debouncedSearchTerm);
       fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
       
@@ -445,46 +413,26 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
     }
   };
 
-  const markAsIncorrect = async (issueId: string) => {
-    setIsUpdating(issueId);
+  const markAsIncorrect = async (partNumber: string, owner: string | null) => {
+    setIsUpdating(`${partNumber}|${owner ?? 'null'}`);
     try {
-      // First, get the part_number and owner for this issue
-      const { data: issueData, error: fetchError } = await supabase
-        .from('issues')
-        .select('part_number, owner')
-        .eq('id', issueId)
-        .single();
-
-      if (fetchError || !issueData) {
-        console.error('Error fetching issue data:', fetchError);
-        return;
-      }
-
       // Update all records with the same part_number and owner
-      // Handle null owner values properly
-      let query = supabase
+      const { error } = await db
         .from('issues')
         .update({ 
           is_corrected: false, 
           corrected_at: null 
         })
-        .eq('part_number', issueData.part_number);
-
-      // Handle owner field - use .is() for null values, .eq() for non-null values
-      if (issueData.owner === null) {
-        query = query.is('owner', null);
-      } else {
-        query = query.eq('owner', issueData.owner);
-      }
-
-      const { error } = await query;
+        .eq('part_number', partNumber)
+        .eq('owner', owner);
 
       if (error) {
         console.error('Error marking as incorrect:', error);
         return;
       }
 
-      // Refresh both tables
+      // Clear selection and refresh both tables
+      setSelectedIssueIds(new Set());
       fetchIssues(currentPage, debouncedSearchTerm);
       fetchCorrectedParts(correctedCurrentPage, debouncedSearchTerm);
       
@@ -537,21 +485,15 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
 
       // Update each unique part
       for (const part of Array.from(uniqueParts.values())) {
-        let query = supabase
+        const { error } = await db
           .from('issues')
           .update({ 
             is_corrected: true, 
             corrected_at: new Date().toISOString() 
           })
-          .eq('part_number', part.part_number);
+          .eq('part_number', part.part_number)
+          .eq('owner', part.owner);
 
-        if (part.owner === null) {
-          query = query.is('owner', null);
-        } else {
-          query = query.eq('owner', part.owner);
-        }
-
-        const { error } = await query;
         if (error) {
           console.error('Error in bulk update:', error);
         }
@@ -591,21 +533,15 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
 
       // Update each unique part
       for (const part of Array.from(uniqueParts.values())) {
-        let query = supabase
+        const { error } = await db
           .from('issues')
           .update({ 
             is_corrected: false, 
             corrected_at: null 
           })
-          .eq('part_number', part.part_number);
+          .eq('part_number', part.part_number)
+          .eq('owner', part.owner);
 
-        if (part.owner === null) {
-          query = query.is('owner', null);
-        } else {
-          query = query.eq('owner', part.owner);
-        }
-
-        const { error } = await query;
         if (error) {
           console.error('Error in bulk update:', error);
         }
@@ -1242,8 +1178,8 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
                         gap: '4px',
                         opacity: isUpdating === issue.id ? 0.7 : 1
                       }}
-                      onClick={() => markAsCorrected(issue.id)}
-                      disabled={isUpdating === issue.id}
+                      onClick={() => markAsCorrected(issue.part_number, issue.owner)}
+                      disabled={isUpdating === `${issue.part_number}|${issue.owner ?? 'null'}`}
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
@@ -1266,8 +1202,8 @@ const PartsTable: React.FC<PartsTableProps> = ({ refreshTrigger = 0, onRefreshCh
                         gap: '4px',
                         opacity: isUpdating === issue.id ? 0.7 : 1
                       }}
-                      onClick={() => markAsIncorrect(issue.id)}
-                      disabled={isUpdating === issue.id}
+                      onClick={() => markAsIncorrect(issue.part_number, issue.owner)}
+                      disabled={isUpdating === `${issue.part_number}|${issue.owner ?? 'null'}`}
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M6 6l12 12M6 18L18 6"/>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { supabase } from '../supabaseClient';
+import { db } from '../mysqlClient';
 import { v4 as uuidv4 } from 'uuid';
 import TotalIssuesSummary from './TotalIssuesSummary';
 import DynamicMetricsPanel from './DynamicMetricsPanel';
@@ -60,13 +60,13 @@ const Dashboard: React.FC = () => {
   const fetchChatbotData = async () => {
     try {
       // Fetch all issues
-      const { data: issuesData, error: issuesError } = await supabase
+      const { data: issuesData, error: issuesError } = await db
         .from('issues')
         .select('*')
         .order('created_at', { ascending: false });
 
       // Fetch all reports
-      const { data: reportsDataRaw, error: reportsError } = await supabase
+      const { data: reportsDataRaw, error: reportsError } = await db
         .from('reports')
         .select('*')
         .order('uploaded_at', { ascending: false });
@@ -117,13 +117,13 @@ const Dashboard: React.FC = () => {
     
     try {
       // Query issues table directly and group by issue_type
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('issues')
         .select('issue_type, part_number')
         .order('issue_type');
 
       // Also fetch the latest report to get the filename
-      const { data: latestReport, error: reportError } = await supabase
+      const { data: latestReport, error: reportError } = await db
         .from('reports')
         .select('file_name, uploaded_at')
         .order('uploaded_at', { ascending: false })
@@ -263,10 +263,10 @@ const Dashboard: React.FC = () => {
         return uniqueIssues.length;
       });
 
-      // Save to Supabase tables (assuming you have a 'reports' and 'issues' table)
+      // Save to MySQL tables (assuming you have a 'reports' and 'issues' table)
       try {
         // 1. Insert report summary
-        const { error: reportError } = await supabase
+        const { error: reportError } = await db
           .from('reports')
           .insert([
             {
@@ -283,7 +283,7 @@ const Dashboard: React.FC = () => {
 
         // 2. Insert individual issues
         if (allPartsToProcess.length > 0) {
-          const { error: issuesError } = await supabase
+          const { error: issuesError } = await db
             .from('issues')
             .insert(allPartsToProcess);
 
@@ -292,8 +292,8 @@ const Dashboard: React.FC = () => {
           }
         }
 
-      } catch (supabaseError) {
-        console.warn('Supabase operation failed, continuing with local processing:', supabaseError);
+      } catch (dbError) {
+        console.warn('Database operation failed, continuing with local processing:', dbError);
       }
 
       // Create chart data (works regardless of Supabase success/failure)
@@ -311,14 +311,14 @@ const Dashboard: React.FC = () => {
         ],
       });
 
-      // Try to refresh chart data from Supabase
+      // Try to refresh chart data from database
       try {
         await fetchChartData();
         // Trigger PartsTable refresh by updating the refresh trigger
         setRefreshTrigger(prev => prev + 1);
       } catch (fetchError) {
-        // If fetching from Supabase fails, we already have local chart data
-        console.warn('Failed to fetch updated data from Supabase:', fetchError);
+        // If fetching from database fails, we already have local chart data
+        console.warn('Failed to fetch updated data from database:', fetchError);
         // Still trigger PartsTable refresh even if chart data fetch fails
         setRefreshTrigger(prev => prev + 1);
       }

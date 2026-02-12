@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
-import { supabase } from '../supabaseClient';
+import { db } from '../mysqlClient';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -40,7 +40,7 @@ const Admin: React.FC<AdminProps> = ({ refreshTrigger = 0 }) => {
     setError('');
     try {
       // First, get all unique issue types
-      const { data: issueTypesData, error: issueTypesError } = await supabase
+      const { data: issueTypesData, error: issueTypesError } = await db
         .from('issues')
         .select('issue_type')
         .order('issue_type');
@@ -52,14 +52,14 @@ const Admin: React.FC<AdminProps> = ({ refreshTrigger = 0 }) => {
       }
 
       // Get unique issue types and limit to 5
-      const issueTypeSet = new Set(issueTypesData?.map(item => item.issue_type) || []);
-      const uniqueIssueTypes = Array.from(issueTypeSet);
+      const issueTypeSet = new Set(issueTypesData?.map((item: any) => item.issue_type) || []);
+      const uniqueIssueTypes = Array.from(issueTypeSet) as string[];
       const limitedIssueTypes = uniqueIssueTypes.slice(0, 5);
       console.log('Issue types found:', limitedIssueTypes);
       setIssueCategories(limitedIssueTypes);
 
       // Query all issues with owner, issue type, and correction status
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('issues')
         .select('owner, issue_type, is_corrected')
         .in('owner', OWNER_TYPES);
@@ -77,7 +77,7 @@ const Admin: React.FC<AdminProps> = ({ refreshTrigger = 0 }) => {
       const ownerData: OwnerCategoryData = {};
       OWNER_TYPES.forEach(owner => {
         ownerData[owner] = {};
-        limitedIssueTypes.forEach(category => {
+        limitedIssueTypes.forEach((category: string) => {
           ownerData[owner][category] = { corrected: 0, notCorrected: 0 };
         });
       });
