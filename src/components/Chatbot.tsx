@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatBubbleIcon } from './icons/ChatBubbleIcon';
+// import { ChatBubbleIcon } from './icons/ChatBubbleIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { SendIcon } from './icons/SendIcon';
 import { ChatMessage, PartNumber, QAReport } from '../types';
@@ -61,37 +61,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({ partsData, reportsData }) => {
 
   return (
     <>
-      <button
-        onClick={toggleChat}
-        className="fixed bottom-6 right-6 bg-atlas-blue text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 transition-transform hover:scale-110"
-        aria-label="Toggle Chatbot"
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          backgroundColor: '#4A90E2',
-          color: 'white',
-          width: '64px',
-          height: '64px',
-          borderRadius: '50%',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'transform 0.2s ease',
-          zIndex: 1000,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.1)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-        }}
-      >
-        {isOpen ? <CloseIcon className="w-8 h-8" style={{ width: '32px', height: '32px' }} /> : <ChatBubbleIcon className="w-8 h-8" style={{ width: '32px', height: '32px' }} />}
-      </button>
+      {/* Chatbot icon button removed */}
 
       {isOpen && (
         <div style={{
